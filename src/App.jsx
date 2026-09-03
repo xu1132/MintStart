@@ -3,7 +3,7 @@ import { ClockSearch } from './components/ClockSearch'
 import { Launchpad } from './components/Launchpad'
 import { loadApps } from './data/apps'
 import { useBingWallpaper } from './hooks/useBingWallpaper'
-import { dissolveFolder, mergeApps, renameFolder, replaceDesktopApp } from './utils/desktop'
+import { dissolveFolder, mergeApps, removeDesktopApp, renameFolder, replaceDesktopApp } from './utils/desktop'
 
 const DESKTOP_STORAGE = 'leave-space-desktop-apps'
 
@@ -43,6 +43,10 @@ export default function App() {
     setItems((current) => replaceDesktopApp(current, app))
   }, [])
 
+  const deleteApp = useCallback((appId) => {
+    setItems((current) => removeDesktopApp(current, appId))
+  }, [])
+
   return (
     <>
       <div
@@ -77,6 +81,7 @@ export default function App() {
         onDissolveFolder={dissolve}
         onAddApp={addApp}
         onEditApp={editApp}
+        onDeleteApp={deleteApp}
       />
       <p className="sr-only" aria-live="polite">{wallpaper ? '今日 Bing 壁纸已加载' : '正在加载今日壁纸'}</p>
     </>

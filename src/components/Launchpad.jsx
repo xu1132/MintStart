@@ -137,16 +137,12 @@ function FolderModal({ folder, onClose, onRename, onDissolve }) {
   )
 }
 
-function AppFormModal({ item, onClose, onSave }) {
+function AppFormModal({ item, onClose, onSave, onResolve }) {
   const isEditing = Boolean(item)
   const [url, setUrl] = useState(item?.url || '')
   const [name, setName] = useState(item?.name || '')
   const [icon, setIcon] = useState(item?.icon || '')
   const [error, setError] = useState('')
-  const [resolving, setResolving] = useState(false)
-  const requestRef = useRef(null)
-
-  useEffect(() => () => requestRef.current?.abort(), [])
 
   const preview = useMemo(() => {
     try {
@@ -163,7 +159,7 @@ function AppFormModal({ item, onClose, onSave }) {
     }
   }, [icon, name, url])
 
-  const submit = async (event) => {
+  const submit = (event) => {
     event.preventDefault()
     setError('')
 
@@ -175,26 +171,28 @@ function AppFormModal({ item, onClose, onSave }) {
       return
     }
 
-    requestRef.current?.abort()
-    const controller = new AbortController()
-    requestRef.current = controller
-    setResolving(true)
+    const app = createDesktopApp(
+      { url: normalizedUrl, name, icon },
+      isEditing ? () => item.id : undefined,
+    )
+    onSave(app)
+    onClose()
 
-    try {
-      const metadata = await resolveSiteMetadata(normalizedUrl, { signal: controller.signal })
-      onSave(createDesktopApp({
-        url: normalizedUrl,
-        name,
-        icon,
-        title: metadata.title,
-        resolvedIcon: metadata.icon,
-      }, isEditing ? () => item.id : undefined))
-      onClose()
-    } catch (requestError) {
-      if (requestError.name !== 'AbortError') setError('暂时无法读取网站信息，请稍后再试')
-    } finally {
-      setResolving(false)
-    }
+    // 后台补全网页标题与图标，不阻塞添加流程
+    const needName = !name.trim()
+    const needIcon = !icon.trim()
+    if (!needName && !needIcon) return
+    resolveSiteMetadata(normalizedUrl)
+      .then((metadata) => {
+        const patch = {}
+        if (needName && metadata.title && metadata.title !== app.name) {
+          patch.name = metadata.title.slice(0, 40)
+          patch.mono = patch.name.slice(0, 1).toUpperCase()
+        }
+        if (needIcon && metadata.icon) patch.icon = metadata.icon
+        if (Object.keys(patch).length) onResolve?.({ ...app, ...patch })
+      })
+      .catch(() => {})
   }
 
   return (
@@ -237,8 +235,8 @@ function AppFormModal({ item, onClose, onSave }) {
           </div>
 
           <div className="add-app-actions">
-            <span className={`add-app-status${error ? ' error' : ''}`}>{error || '名称和图标留空时，会自动读取网站信息'}</span>
-            <button type="submit" disabled={resolving}>{resolving ? '正在读取…' : isEditing ? '保存修改' : '添加 App'}</button>
+            <span className={`add-app-status${error ? ' error' : ''}`}>{error || '立即添加，名称和图标留空时稍后自动补全'}</span>
+            <button type="submit">{isEditing ? '保存修改' : '添加 App'}</button>
           </div>
         </form>
       </section>
@@ -246,7 +244,7 @@ function AppFormModal({ item, onClose, onSave }) {
   )
 }
 
-export function Launchpad({ open, items, onClose, onMerge, onRenameFolder, onDissolveFolder, onAddApp, onEditApp }) {
+export function Launchpad({ open, items, onClose, onMerge, onRenameFolder, onDissolveFolder, onAddApp, onEditApp, onDeleteApp }) {
   const [folderId, setFolderId] = useState(null)
   const [addOpen, setAddOpen] = useState(false)
   const [editingAppId, setEditingAppId] = useState(null)
@@ -332,12 +330,12 @@ export function Launchpad({ open, items, onClose, onMerge, onRenameFolder, onDis
     setContextMenu({
       itemId: item.id,
       x: Math.min(event.clientX, window.innerWidth - width - 12),
-      y: Math.min(event.clientY, window.innerHeight - 58),
+      y: Math.min(event.clientY, window.innerHeight - 100),
     })
   }
 
   const handleLauncherPointerDown = (event) => {
-    if (event.target.closest('[data-app-tile], .folder-modal, .add-app-modal, .app-context-menu')) return
+    if (event.target.closest('[data-app-tile], .folder-backdrop, .folder-modal, .add-app-modal, .app-context-menu')) return
     if (contextMenu) setContextMenu(null)
     else onClose()
   }
@@ -436,10 +434,21 @@ export function Launchpad({ open, items, onClose, onMerge, onRenameFolder, onDis
           >
             编辑 App
           </button>
+          <button
+            className="danger"
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              onDeleteApp(contextMenu.itemId)
+              setContextMenu(null)
+            }}
+          >
+            删除 App
+          </button>
         </div>
       )}
-      {addOpen && <AppFormModal onClose={() => setAddOpen(false)} onSave={onAddApp} />}
-      {editingApp && <AppFormModal item={editingApp} onClose={() => setEditingAppId(null)} onSave={onEditApp} />}
+      {addOpen && <AppFormModal onClose={() => setAddOpen(false)} onSave={onAddApp} onResolve={onEditApp} />}
+      {editingApp && <AppFormModal item={editingApp} onClose={() => setEditingAppId(null)} onSave={onEditApp} onResolve={onEditApp} />}
     </section>
   )
 }

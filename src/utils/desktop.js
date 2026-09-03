@@ -53,8 +53,24 @@ export function dissolveFolder(items, folderId) {
   ]
 }
 
+export function removeDesktopApp(items, appId) {
+  return items.filter((item) => item.id !== appId)
+}
+
 export function replaceDesktopApp(items, nextApp) {
-  return items.map((item) => item.id === nextApp.id ? nextApp : item)
+  let changed = false
+  const result = items.map((item) => {
+    if (item.id === nextApp.id) {
+      changed = true
+      return nextApp
+    }
+    if (item.type === 'folder' && item.items.some((app) => app.id === nextApp.id)) {
+      changed = true
+      return { ...item, items: item.items.map((app) => (app.id === nextApp.id ? nextApp : app)) }
+    }
+    return item
+  })
+  return changed ? result : items
 }
 
 export function normalizeAppUrl(value) {

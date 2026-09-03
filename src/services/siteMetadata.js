@@ -6,7 +6,7 @@ export async function resolveSiteMetadata(rawUrl, { signal } = {}) {
   const url = normalizeAppUrl(rawUrl)
   const fallback = { title: nameFromUrl(url), icon: '' }
   const controller = new AbortController()
-  const timeout = window.setTimeout(() => controller.abort(), 8000)
+  const timeout = window.setTimeout(() => controller.abort(), 6000)
   const forwardAbort = () => controller.abort()
   signal?.addEventListener('abort', forwardAbort, { once: true })
 

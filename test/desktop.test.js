@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { createDesktopApp, dissolveFolder, mergeApps, normalizeAppUrl, renameFolder, replaceDesktopApp } from '../src/utils/desktop.js'
+import { createDesktopApp, dissolveFolder, mergeApps, normalizeAppUrl, removeDesktopApp, renameFolder, replaceDesktopApp } from '../src/utils/desktop.js'
 
 const alpha = { id: 'a', name: 'Alpha', url: 'https://a.example' }
 const beta = { id: 'b', name: 'Beta', url: 'https://b.example' }
@@ -49,10 +49,24 @@ test('dissolving a folder puts its apps back into the original grid position', (
   assert.deepEqual(result, [gamma, alpha, beta])
 })
 
+test('removing an app deletes it and keeps the rest in order', () => {
+  const result = removeDesktopApp([alpha, beta, gamma], 'b')
+  assert.deepEqual(result, [alpha, gamma])
+  assert.deepEqual(removeDesktopApp([alpha], 'missing'), [alpha])
+})
+
 test('editing an app replaces only that app while preserving order', () => {
   const edited = { ...beta, name: 'Beta 编辑版', icon: 'https://example.com/icon.png' }
   const result = replaceDesktopApp([alpha, beta, gamma], edited)
   assert.deepEqual(result, [alpha, edited, gamma])
+})
+
+test('editing an app nested inside a folder updates it in place', () => {
+  const folder = { id: 'folder-1', type: 'folder', name: '工作', items: [alpha, beta] }
+  const edited = { ...beta, name: 'Beta 补全版', icon: 'https://example.com/icon.png' }
+  const result = replaceDesktopApp([folder, gamma], edited)
+  assert.deepEqual(result[0].items, [alpha, edited])
+  assert.equal(result[1], gamma)
 })
 
 test('app URLs are normalized and reject unsafe protocols', () => {
