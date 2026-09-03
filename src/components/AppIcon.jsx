@@ -27,16 +27,19 @@ function WebIcon({ app, mini = false }) {
 
 function FolderIcon({ folder }) {
   const previewItems = folder.items.slice(0, 4)
+  const isPair = previewItems.length === 2
 
   return (
     <span className="app-icon folder-icon">
-      <span className="folder-icon-grid">
-        {Array.from({ length: 4 }, (_, index) => {
-          const app = previewItems[index]
-          return app
-            ? <WebIcon app={app} mini key={app.id} />
-            : <span className="mini-app-icon mini-app-placeholder" aria-hidden="true" key={`empty-${index}`} />
-        })}
+      <span className={`folder-icon-grid${isPair ? ' count-2' : ''}`}>
+        {isPair
+          ? previewItems.map((app) => <WebIcon app={app} mini key={app.id} />)
+          : Array.from({ length: 4 }, (_, index) => {
+              const app = previewItems[index]
+              return app
+                ? <WebIcon app={app} mini key={app.id} />
+                : <span className="mini-app-icon mini-app-placeholder" aria-hidden="true" key={`empty-${index}`} />
+            })}
       </span>
       <i className="folder-count">{folder.items.length}</i>
     </span>
