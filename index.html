@@ -4,41 +4,11 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#263043" />
+    <meta name="description" content="一款使用 Bing 每日壁纸的极简 React 起始页" />
     <title>留白 · 每日一景</title>
-    <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
-    <div class="wallpaper" id="wallpaper" aria-hidden="true"></div>
-    <div class="shade" aria-hidden="true"></div>
-
-    <main class="start-page">
-      <section class="clock-shell" id="clockShell" aria-label="时间与搜索">
-        <button class="clock" id="clock" type="button" aria-label="展开搜索" aria-controls="searchForm" aria-expanded="false">
-          <span id="time">00:00</span>
-        </button>
-
-        <form class="search-form" id="searchForm" role="search">
-          <div class="engine-picker">
-            <button class="engine-toggle" id="engineToggle" type="button" aria-expanded="false" aria-controls="engineMenu">
-              <span class="engine-mark bing" id="engineMark" aria-hidden="true"></span>
-              <span id="engineName">Bing</span>
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5"></path></svg>
-            </button>
-            <div class="engine-menu" id="engineMenu" role="menu" aria-label="选择搜索引擎">
-              <button data-engine="bing" type="button" role="menuitem"><span class="engine-mark bing"></span>Bing</button>
-              <button data-engine="google" type="button" role="menuitem"><span class="engine-mark google"></span>Google</button>
-              <button data-engine="baidu" type="button" role="menuitem"><span class="engine-mark baidu"></span>百度</button>
-            </div>
-          </div>
-          <span class="search-divider" aria-hidden="true"></span>
-          <svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.4"></circle><path d="m16 16 5 5"></path></svg>
-          <input id="searchInput" type="search" placeholder="搜索，或输入网址" autocomplete="off" aria-label="搜索，或输入网址" />
-          <button type="submit" aria-label="开始搜索">↵</button>
-        </form>
-      </section>
-    </main>
-
-    <p class="sr-only" id="wallpaperStatus" aria-live="polite">正在加载今日壁纸</p>
-    <script src="app.js"></script>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
