@@ -163,12 +163,39 @@ body.launcher-open .start-page { filter: blur(9px); opacity: .26; transform: sca
   background: rgba(12,18,29,.1);
   opacity: 0;
   pointer-events: none;
+  overscroll-behavior: contain;
+  touch-action: none;
   transition: opacity .2s ease;
 }
 .launcher.show { opacity: 1; pointer-events: auto; }
-.launcher-stage { width: min(960px,100%); transform: scale(1.045); filter: blur(5px); transition: transform .3s var(--ease), filter .22s ease; }
+.launcher-stage { width: min(960px,100%); display: flex; flex-direction: column; overflow: hidden; contain: layout paint; transform: scale(1.045); filter: blur(5px); transition: transform .3s var(--ease), filter .22s ease; }
 .launcher.show .launcher-stage { transform: scale(1); filter: none; }
-.app-grid { display: grid; grid-template-columns: repeat(6,minmax(76px,1fr)); gap: clamp(30px,5vh,54px) clamp(19px,3.5vw,42px); }
+.launcher-pages { display: flex; align-items: stretch; backface-visibility: hidden; transform: translate3d(0,0,0); transition: transform 300ms cubic-bezier(.4,0,.2,1); will-change: transform; }
+.app-page { flex: 0 0 100%; min-width: 0; align-content: start; padding-top: 16px; contain: layout paint; backface-visibility: hidden; }
+.launcher-dots {
+  position: relative;
+  align-self: center;
+  display: flex;
+  gap: 10px;
+  margin-top: clamp(20px, 3.2vh, 30px);
+}
+.launcher-dots button { width: 7px; height: 7px; padding: 0; border: 0; border-radius: 999px; background: rgba(255,255,255,.3); cursor: pointer; transition: background .25s ease; }
+.launcher-dots button:hover { background: rgba(255,255,255,.58); }
+.launcher-dots button.active { background: transparent; }
+.launcher-dots .dot-pill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 20px;
+  height: 7px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.94);
+  transform: translate3d(-6.5px,0,0);
+  transition: transform 300ms cubic-bezier(.4,0,.2,1);
+  will-change: transform;
+  pointer-events: none;
+}
+.app-grid { display: grid; grid-template-columns: repeat(5,minmax(76px,1fr)); gap: clamp(30px,5vh,54px) clamp(19px,3.5vw,42px); }
 .app-tile {
   --delay: calc(var(--index,0) * 16ms);
   min-width: 0;
@@ -357,8 +384,8 @@ body.launcher-open .start-page { filter: blur(9px); opacity: .26; transform: sca
   .search-form input { font-size: 14px; }
   .search-form > button { width: 39px; height: 39px; margin-left: 6px; }
   .launcher { padding: 108px 24px 35px; }
-  .app-grid { grid-template-columns: repeat(4,minmax(60px,1fr)); gap: 31px 13px; }
-  .app-icon { width: 57px; border-radius: 17px; }
+  .app-grid { grid-template-columns: repeat(5,minmax(42px,1fr)); gap: 31px 8px; }
+  .app-icon { width: clamp(48px,13vw,57px); border-radius: 17px; }
   .folder-icon { padding: 8px; }
   .folder-modal { padding: 25px 20px; border-radius: 24px; }
   .folder-grid { grid-template-columns: repeat(3,1fr); gap: 25px 14px; }
