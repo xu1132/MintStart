@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 
 const BING_ARCHIVE = 'https://www.bing.com/HPImageArchive.aspx?format=js&idx=0&n=1&mkt=zh-CN'
+const BING_FALLBACK_API = 'https://bing.biturl.top/?resolution=UHD&format=json&index=0&mkt=zh-CN'
 const CACHE_KEY = 'leave-space-bing-wallpaper'
 
 function localDateKey() {
@@ -8,6 +9,10 @@ function localDateKey() {
   const month = String(now.getMonth() + 1).padStart(2, '0')
   const day = String(now.getDate()).padStart(2, '0')
   return `${now.getFullYear()}-${month}-${day}`
+}
+
+function fallbackWallpaper(date) {
+  return `https://bing.biturl.top/?resolution=1920&format=image&index=0&mkt=zh-CN&date=${date}`
 }
 
 function readCache() {
@@ -19,7 +24,11 @@ function readCache() {
 }
 
 export function useBingWallpaper() {
-  const [wallpaper, setWallpaper] = useState(() => readCache()?.url || '')
+  const [wallpaper, setWallpaper] = useState(() => {
+    const cached = readCache()
+    const today = localDateKey()
+    return cached?.date === today && cached.url ? cached.url : fallbackWallpaper(today)
+  })
 
   useEffect(() => {
     let cancelled = false
@@ -42,8 +51,18 @@ export function useBingWallpaper() {
         localStorage.setItem(CACHE_KEY, JSON.stringify({ date: today, url, copyright: image.copyright }))
         if (!cancelled) setWallpaper(url)
       } catch {
-        if (!cancelled && cached?.url) setWallpaper(cached.url)
-        if (!cancelled && !cached?.url) setWallpaper('https://bing.biturl.top/?resolution=1920&format=image')
+        try {
+          const response = await fetch(`${BING_FALLBACK_API}&_=${Date.now()}`, { cache: 'no-store' })
+          if (!response.ok) throw new Error('Fallback wallpaper request failed')
+          const image = await response.json()
+          if (!image.url) throw new Error('No fallback image returned')
+          localStorage.setItem(CACHE_KEY, JSON.stringify({ date: today, url: image.url, copyright: image.copyright }))
+          if (!cancelled) setWallpaper(image.url)
+        } catch {
+          const fallback = fallbackWallpaper(today)
+          localStorage.setItem(CACHE_KEY, JSON.stringify({ date: today, url: fallback }))
+          if (!cancelled) setWallpaper(fallback)
+        }
       }
     }
 

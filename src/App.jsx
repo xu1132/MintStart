@@ -3,13 +3,15 @@ import { ClockSearch } from './components/ClockSearch'
 import { Launchpad } from './components/Launchpad'
 import { loadApps } from './data/apps'
 import { useBingWallpaper } from './hooks/useBingWallpaper'
-import { mergeApps, renameFolder } from './utils/desktop'
+import { dissolveFolder, mergeApps, renameFolder, replaceDesktopApp } from './utils/desktop'
 
 const DESKTOP_STORAGE = 'leave-space-desktop-apps'
 
 export default function App() {
   const wallpaper = useBingWallpaper()
   const [launchpadOpen, setLaunchpadOpen] = useState(false)
+  const [searchActive, setSearchActive] = useState(false)
+  const [searchResetVersion, setSearchResetVersion] = useState(0)
   const [items, setItems] = useState(() => loadApps(DESKTOP_STORAGE))
 
   useEffect(() => {
@@ -29,6 +31,18 @@ export default function App() {
     setItems((current) => renameFolder(current, folderId, name))
   }, [])
 
+  const addApp = useCallback((app) => {
+    setItems((current) => [...current, app])
+  }, [])
+
+  const dissolve = useCallback((folderId) => {
+    setItems((current) => dissolveFolder(current, folderId))
+  }, [])
+
+  const editApp = useCallback((app) => {
+    setItems((current) => replaceDesktopApp(current, app))
+  }, [])
+
   return (
     <>
       <div
@@ -40,11 +54,18 @@ export default function App() {
 
       <main
         className="start-page"
-        onPointerDown={(event) => {
-          if (event.target === event.currentTarget) setLaunchpadOpen(true)
-        }}
-      >
-        <ClockSearch />
+      onPointerDown={(event) => {
+        if (event.target !== event.currentTarget) return
+
+        if (searchActive) {
+          setSearchResetVersion((version) => version + 1)
+          return
+        }
+
+        setLaunchpadOpen(true)
+      }}
+    >
+      <ClockSearch onActiveChange={setSearchActive} resetVersion={searchResetVersion} />
       </main>
 
       <Launchpad
@@ -53,6 +74,9 @@ export default function App() {
         onClose={() => setLaunchpadOpen(false)}
         onMerge={merge}
         onRenameFolder={rename}
+        onDissolveFolder={dissolve}
+        onAddApp={addApp}
+        onEditApp={editApp}
       />
       <p className="sr-only" aria-live="polite">{wallpaper ? '今日 Bing 壁纸已加载' : '正在加载今日壁纸'}</p>
     </>

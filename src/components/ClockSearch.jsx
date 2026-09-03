@@ -6,17 +6,21 @@ const engines = {
   baidu: { name: '百度', url: 'https://www.baidu.com/s?wd=' },
 }
 
+const OPEN_DELAY = 110
+const CLOSE_DELAY = 240
+
 function formatTime() {
   return new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false })
 }
 
-export function ClockSearch() {
+export function ClockSearch({ onActiveChange, resetVersion }) {
   const [time, setTime] = useState(formatTime)
   const [open, setOpen] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const [engineKey, setEngineKey] = useState(() => localStorage.getItem('leave-space-search-engine') || 'bing')
   const inputRef = useRef(null)
   const shellRef = useRef(null)
+  const openTimer = useRef()
   const closeTimer = useRef()
   const engine = engines[engineKey] || engines.bing
 
@@ -25,26 +29,63 @@ export function ClockSearch() {
     return () => window.clearInterval(timer)
   }, [])
 
+  useEffect(() => () => {
+    window.clearTimeout(openTimer.current)
+    window.clearTimeout(closeTimer.current)
+  }, [])
+
+  useEffect(() => {
+    onActiveChange?.(open)
+  }, [onActiveChange, open])
+
+  useEffect(() => () => onActiveChange?.(false), [onActiveChange])
+
+  useEffect(() => {
+    if (!resetVersion) return
+
+    window.clearTimeout(openTimer.current)
+    window.clearTimeout(closeTimer.current)
+    setMenuOpen(false)
+    setOpen(false)
+
+    if (shellRef.current?.contains(document.activeElement)) {
+      document.activeElement?.blur()
+    }
+  }, [resetVersion])
+
   const reveal = (focus = false) => {
     window.clearTimeout(closeTimer.current)
-    setOpen(true)
-    if (focus) window.setTimeout(() => inputRef.current?.focus({ preventScroll: true }), 180)
+    if (focus) {
+      window.clearTimeout(openTimer.current)
+      setOpen(true)
+      window.setTimeout(() => inputRef.current?.focus({ preventScroll: true }), 160)
+      return
+    }
+
+    if (open) return
+    window.clearTimeout(openTimer.current)
+    openTimer.current = window.setTimeout(() => setOpen(true), OPEN_DELAY)
   }
 
   const scheduleClose = () => {
+    window.clearTimeout(openTimer.current)
+    window.clearTimeout(closeTimer.current)
     closeTimer.current = window.setTimeout(() => {
-      if (!shellRef.current?.matches(':hover') && !shellRef.current?.contains(document.activeElement)) {
+      const shell = shellRef.current
+      const shouldClose = !shell?.contains(document.activeElement)
+      if (!shell?.matches(':hover') && shouldClose) {
         setOpen(false)
         setMenuOpen(false)
+        if (shell?.contains(document.activeElement)) document.activeElement?.blur()
       }
-    }, 120)
+    }, CLOSE_DELAY)
   }
 
   const chooseEngine = (key) => {
     setEngineKey(key)
     localStorage.setItem('leave-space-search-engine', key)
     setMenuOpen(false)
-    inputRef.current?.focus()
+    window.setTimeout(() => inputRef.current?.focus({ preventScroll: true }), 0)
   }
 
   const submit = (event) => {

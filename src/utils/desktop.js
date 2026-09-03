@@ -40,3 +40,63 @@ export function renameFolder(items, folderId, name) {
   })
   return changed ? result : items
 }
+
+export function dissolveFolder(items, folderId) {
+  const folderIndex = items.findIndex((item) => item.id === folderId && item.type === 'folder')
+  if (folderIndex < 0) return items
+
+  const folder = items[folderIndex]
+  return [
+    ...items.slice(0, folderIndex),
+    ...folder.items,
+    ...items.slice(folderIndex + 1),
+  ]
+}
+
+export function replaceDesktopApp(items, nextApp) {
+  return items.map((item) => item.id === nextApp.id ? nextApp : item)
+}
+
+export function normalizeAppUrl(value) {
+  const raw = value.trim()
+  if (!raw) throw new Error('请输入网址')
+
+  const candidate = /^[a-z][a-z\d+.-]*:/i.test(raw) ? raw : `https://${raw}`
+  let url
+  try {
+    url = new URL(candidate)
+  } catch {
+    throw new Error('网址格式不正确')
+  }
+
+  if (!['http:', 'https:'].includes(url.protocol) || !url.hostname) {
+    throw new Error('仅支持 http 或 https 网址')
+  }
+  return url.href
+}
+
+export function nameFromUrl(url) {
+  return new URL(url).hostname.replace(/^www\./, '')
+}
+
+function colorFromUrl(url) {
+  const hostname = new URL(url).hostname
+  let hash = 0
+  for (const character of hostname) hash = character.charCodeAt(0) + ((hash << 5) - hash)
+  return `hsl(${Math.abs(hash) % 360} 48% 48%)`
+}
+
+export function createDesktopApp(draft, createId = () => `app-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`) {
+  const url = normalizeAppUrl(draft.url)
+  const name = (draft.name?.trim() || draft.title?.trim() || nameFromUrl(url)).slice(0, 40)
+  const icon = draft.icon?.trim() || draft.resolvedIcon?.trim() || undefined
+
+  return {
+    id: createId(),
+    name,
+    url,
+    ...(icon ? { icon } : {}),
+    mono: name.slice(0, 1).toUpperCase(),
+    color: colorFromUrl(url),
+  }
+}
