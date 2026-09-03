@@ -47,7 +47,7 @@ body.launcher-open .shade { background: rgba(8,13,24,.42); }
 body.launcher-open .start-page { filter: blur(9px); opacity: .26; transform: scale(1.025); pointer-events: none; }
 
 .clock-shell {
-  width: 236px;
+  width: 268px;
   height: 92px;
   position: fixed;
   top: clamp(62px, 11vh, 132px);
@@ -64,21 +64,19 @@ body.launcher-open .start-page { filter: blur(9px); opacity: .26; transform: sca
   isolation: isolate;
   z-index: 1;
   border: 0;
-  padding: 8px 14px 12px;
+  padding: 4px 10px 8px;
   color: rgba(255,255,255,.98);
   background: transparent;
   font-size: clamp(48px, 5.45vw, 78px);
-  font-weight: 280;
+  font-weight: 300;
   font-variant-numeric: tabular-nums;
-  letter-spacing: -.075em;
+  letter-spacing: .045em;
   line-height: 1;
-  text-shadow: 0 4px 20px rgba(0,0,0,.19), 0 1px 1px rgba(255,255,255,.16);
+  text-shadow: 0 4px 22px rgba(0,0,0,.22), 0 1px 1px rgba(255,255,255,.18);
   cursor: default;
   transition: transform .58s var(--ease), opacity .28s ease, filter .34s ease, text-shadow .32s ease;
 }
-.clock::before { content: ""; position: absolute; z-index: -1; inset: -7px -15px; border: 1px solid rgba(255,255,255,.13); border-radius: 28px; background: linear-gradient(135deg,rgba(255,255,255,.15),rgba(255,255,255,.025)); box-shadow: 0 11px 34px rgba(6,11,22,.12), inset 0 1px rgba(255,255,255,.21); backdrop-filter: blur(10px); opacity: 0; transform: scale(.94); transition: opacity .32s ease, transform .48s var(--ease); }
-.clock::after { content: ""; width: 26px; height: 2px; position: absolute; bottom: 0; left: 50%; border-radius: 999px; background: linear-gradient(90deg,transparent,rgba(255,255,255,.92),transparent); box-shadow: 0 0 12px rgba(255,255,255,.38); transform: translateX(-50%) scaleX(.55); opacity: .48; transition: transform .42s var(--ease), opacity .28s ease; }
-.clock:hover::before, .clock:focus-visible::before { opacity: 1; transform: none; }
+.clock::after { content: ""; width: 26px; height: 2px; position: absolute; bottom: 0; left: 50%; border-radius: 999px; background: linear-gradient(90deg,transparent,rgba(255,255,255,.92),transparent); box-shadow: 0 0 12px rgba(255,255,255,.38); transform: translateX(-50%) scaleX(.55); opacity: .48; transition: transform .42s var(--ease), opacity .28s ease; pointer-events: none; }
 .clock:hover::after, .clock:focus-visible::after { transform: translateX(-50%) scaleX(1); opacity: .94; }
 .clock:hover { text-shadow: 0 6px 26px rgba(0,0,0,.25), 0 1px 1px rgba(255,255,255,.2); }
 .clock:focus-visible { outline: 2px solid rgba(255,255,255,.8); outline-offset: 9px; border-radius: 8px; }
