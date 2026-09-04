@@ -31,6 +31,8 @@ const PAGE_CAPACITY = PAGE_COLUMNS * PAGE_ROWS
 const PAGE_SWITCH_EASING = 'cubic-bezier(.4,0,.2,1)'
 const PAGE_SWITCH_TRANSITION = `transform 300ms ${PAGE_SWITCH_EASING}`
 const PAGE_INDICATOR_STEP = 17
+// `.launcher` 的透明度退场为 200ms；页码重置晚一点执行，确保退场时不会看见横向滑回第一页。
+const LAUNCHER_HIDE_DURATION = 220
 // 普通慢拖越过页面宽度的 24% 即翻页；不需要拉到半屏，保持操作轻量。
 const PAGE_COMMIT_DISTANCE_FRACTION = 0.24
 // 快速甩动阈值，单位为 px/ms（0.28 约等于 280px/s）。
@@ -339,6 +341,7 @@ export function Launchpad({ open, items, onClose, onMerge, onRenameFolder, onDis
   const wheelGesture = useRef(null)
   const trackFrame = useRef(0)
   const pendingTrackPosition = useRef(null)
+  const resetTimer = useRef(0)
   const activeItem = items.find((item) => item.id === activeId)
   const openFolder = items.find((item) => item.id === folderId && item.type === 'folder')
   const editingApp = items.find((item) => item.id === editingAppId && item.type !== 'folder')
@@ -437,9 +440,13 @@ export function Launchpad({ open, items, onClose, onMerge, onRenameFolder, onDis
   useEffect(() => () => {
     cancelTrackFrame()
     if (wheelGesture.current?.timer) window.clearTimeout(wheelGesture.current.timer)
+    if (resetTimer.current) window.clearTimeout(resetTimer.current)
   }, [cancelTrackFrame])
 
   useEffect(() => {
+    if (resetTimer.current) window.clearTimeout(resetTimer.current)
+    resetTimer.current = 0
+
     if (!open) {
       setFolderId(null)
       setAddOpen(false)
@@ -447,12 +454,19 @@ export function Launchpad({ open, items, onClose, onMerge, onRenameFolder, onDis
       setContextMenu(null)
       setActiveId(null)
       setFallbackOverId(null)
-      setPage(0)
-      pageRef.current = 0
       fallbackOverRef.current = null
-      resetPan(0)
+
+      // 先保留用户离开时所在的页，让它和第一页一样随 Launcher 整体淡出。
+      // 等容器完全透明后再无动画复位，既不露出横向回页，也保证下次从默认页打开。
+      resetTimer.current = window.setTimeout(() => {
+        resetTimer.current = 0
+        pageRef.current = 0
+        setPage(0)
+        cancelTrackFrame()
+        drawTrack(0, 0)
+      }, LAUNCHER_HIDE_DURATION)
     }
-  }, [open, resetPan])
+  }, [cancelTrackFrame, drawTrack, open])
 
   useEffect(() => {
     const onKeyDown = (event) => {
