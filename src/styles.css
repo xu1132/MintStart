@@ -125,6 +125,7 @@ body.launcher-open .start-page { filter: blur(9px); opacity: .26; transform: sca
 .engine-mark.bing { background: linear-gradient(135deg,#27d5ad 0 38%,#1f84f4 38% 67%,#a9e62b 67%); }
 .engine-mark.google { background: conic-gradient(#4285f4 0 25%,#34a853 0 46%,#fbbc05 0 66%,#ea4335 0 85%,#4285f4 0); }
 .engine-mark.baidu { border-radius: 4px; background: #3478ed; }
+.engine-mark.sogou { border-radius: 5px; background: linear-gradient(135deg,#ff6b35 0 50%,#4b8df8 50%); }
 .engine-menu {
   min-width: 150px;
   position: absolute;

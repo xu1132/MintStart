@@ -35,6 +35,10 @@ export const authApi = {
     method: 'POST',
     body: JSON.stringify({ currentPassword, newPassword }),
   }),
+  updateSearchEngine: (searchEngine) => request('/auth/settings/search-engine', {
+    method: 'PUT',
+    body: JSON.stringify({ searchEngine }),
+  }),
 }
 
 export const desktopApi = {

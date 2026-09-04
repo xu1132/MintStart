@@ -1,10 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-
-const engines = {
-  bing: { name: 'Bing', url: 'https://www.bing.com/search?q=' },
-  google: { name: 'Google', url: 'https://www.google.com/search?q=' },
-  baidu: { name: '百度', url: 'https://www.baidu.com/s?wd=' },
-}
+import { DEFAULT_SEARCH_ENGINE, normalizeSearchEngine, SEARCH_ENGINES } from '../data/searchEngines'
 
 const OPEN_DELAY = 110
 const CLOSE_DELAY = 240
@@ -13,16 +8,22 @@ function formatTime() {
   return new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false })
 }
 
-export function ClockSearch({ onActiveChange, resetVersion }) {
+const SEARCH_ENGINE_STORAGE = 'leave-space-search-engine'
+
+function getLocalSearchEngine() {
+  return normalizeSearchEngine(localStorage.getItem(SEARCH_ENGINE_STORAGE) || DEFAULT_SEARCH_ENGINE)
+}
+
+export function ClockSearch({ onActiveChange, onEngineChange, preferredEngine = null, resetVersion }) {
   const [time, setTime] = useState(formatTime)
   const [open, setOpen] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
-  const [engineKey, setEngineKey] = useState(() => localStorage.getItem('leave-space-search-engine') || 'bing')
+  const [engineKey, setEngineKey] = useState(getLocalSearchEngine)
   const inputRef = useRef(null)
   const shellRef = useRef(null)
   const openTimer = useRef()
   const closeTimer = useRef()
-  const engine = engines[engineKey] || engines.bing
+  const engine = SEARCH_ENGINES[engineKey] || SEARCH_ENGINES[DEFAULT_SEARCH_ENGINE]
 
   useEffect(() => {
     const timer = window.setInterval(() => setTime(formatTime()), 1000)
@@ -37,6 +38,10 @@ export function ClockSearch({ onActiveChange, resetVersion }) {
   useEffect(() => {
     onActiveChange?.(open)
   }, [onActiveChange, open])
+
+  useEffect(() => {
+    setEngineKey(preferredEngine ? normalizeSearchEngine(preferredEngine) : getLocalSearchEngine())
+  }, [preferredEngine])
 
   useEffect(() => () => onActiveChange?.(false), [onActiveChange])
 
@@ -83,7 +88,8 @@ export function ClockSearch({ onActiveChange, resetVersion }) {
 
   const chooseEngine = (key) => {
     setEngineKey(key)
-    localStorage.setItem('leave-space-search-engine', key)
+    if (!preferredEngine) localStorage.setItem(SEARCH_ENGINE_STORAGE, key)
+    onEngineChange?.(key)
     setMenuOpen(false)
     window.setTimeout(() => inputRef.current?.focus({ preventScroll: true }), 0)
   }
@@ -119,7 +125,7 @@ export function ClockSearch({ onActiveChange, resetVersion }) {
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5" /></svg>
           </button>
           <div className={`engine-menu${menuOpen ? ' open' : ''}`} role="menu">
-            {Object.entries(engines).map(([key, value]) => (
+            {Object.entries(SEARCH_ENGINES).map(([key, value]) => (
               <button key={key} type="button" role="menuitem" onClick={() => chooseEngine(key)}>
                 <span className={`engine-mark ${key}`} />{value.name}
               </button>

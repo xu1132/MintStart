@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { ClockSearch } from './components/ClockSearch'
 import { Launchpad } from './components/Launchpad'
 import { AuthModal } from './components/AuthModal'
@@ -7,6 +7,7 @@ import { AdminDashboard } from './components/AdminDashboard'
 import { AdminPage } from './components/AdminPage'
 import { OnboardingGuide } from './components/OnboardingGuide'
 import { loadApps } from './data/apps'
+import { DEFAULT_SEARCH_ENGINE } from './data/searchEngines'
 import { useBingWallpaper } from './hooks/useBingWallpaper'
 import { authApi, desktopApi, getAuthToken, saveAuthToken } from './services/api'
 import { dissolveFolder, mergeApps, removeDesktopApp, renameFolder, replaceDesktopApp } from './utils/desktop'
@@ -37,6 +38,7 @@ function MainApp() {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [adminOpen, setAdminOpen] = useState(false)
   const [syncStatus, setSyncStatus] = useState('游客模式，配置保存在本机')
+  const searchEngineSaveVersion = useRef(0)
 
   useEffect(() => {
     if (!getAuthToken()) {
@@ -143,6 +145,26 @@ function MainApp() {
     setSyncStatus('正在连接云端…')
   }, [])
 
+  const handleSearchEngineChange = useCallback((searchEngine) => {
+    if (!user) return
+
+    const userId = user.id
+    const previousEngine = user.searchEngine || DEFAULT_SEARCH_ENGINE
+    const saveVersion = searchEngineSaveVersion.current + 1
+    searchEngineSaveVersion.current = saveVersion
+    setUser((current) => current ? { ...current, searchEngine } : current)
+
+    authApi.updateSearchEngine(searchEngine)
+      .then(({ searchEngine: savedEngine }) => {
+        if (searchEngineSaveVersion.current !== saveVersion) return
+        setUser((current) => current?.id === userId ? { ...current, searchEngine: savedEngine } : current)
+      })
+      .catch(() => {
+        if (searchEngineSaveVersion.current !== saveVersion) return
+        setUser((current) => current?.id === userId ? { ...current, searchEngine: previousEngine } : current)
+      })
+  }, [user])
+
   const handleLogout = useCallback(async () => {
     try { await authApi.logout() } catch { /* 即使网络中断，也清除本地登录态 */ }
     saveAuthToken('')
@@ -174,7 +196,12 @@ function MainApp() {
         setLaunchpadOpen(true)
       }}
     >
-      <ClockSearch onActiveChange={setSearchActive} resetVersion={searchResetVersion} />
+      <ClockSearch
+        onActiveChange={setSearchActive}
+        onEngineChange={handleSearchEngineChange}
+        preferredEngine={user ? (user.searchEngine || DEFAULT_SEARCH_ENGINE) : null}
+        resetVersion={searchResetVersion}
+      />
       </main>
 
       <OnboardingGuide
