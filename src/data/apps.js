@@ -15,7 +15,7 @@ export const cloneDefaultApps = () => JSON.parse(JSON.stringify(defaultApps))
 export function loadApps(storageKey) {
   try {
     const saved = JSON.parse(localStorage.getItem(storageKey) || 'null')
-    return Array.isArray(saved) && saved.length ? saved : cloneDefaultApps()
+    return Array.isArray(saved) ? saved : cloneDefaultApps()
   } catch {
     return cloneDefaultApps()
   }

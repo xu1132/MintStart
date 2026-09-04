@@ -321,13 +321,14 @@ function AppFormModal({ item, onClose, onSave, onResolve }) {
   )
 }
 
-export function Launchpad({ open, items, onClose, onMerge, onRenameFolder, onDissolveFolder, onAddApp, onEditApp, onDeleteApp }) {
+export function Launchpad({ open, items, user, syncStatus, onClose, onMerge, onRenameFolder, onDissolveFolder, onAddApp, onEditApp, onDeleteApp, onLogin, onRegister, onSettings, onAdmin, onLogout }) {
   const [folderId, setFolderId] = useState(null)
   const [addOpen, setAddOpen] = useState(false)
   const [editingAppId, setEditingAppId] = useState(null)
   const [contextMenu, setContextMenu] = useState(null)
   const [activeId, setActiveId] = useState(null)
   const [fallbackOverId, setFallbackOverId] = useState(null)
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false)
   const capacity = PAGE_CAPACITY
   const [page, setPage] = useState(0)
   const sectionRef = useRef(null)
@@ -608,7 +609,7 @@ export function Launchpad({ open, items, onClose, onMerge, onRenameFolder, onDis
   }, [])
 
   const handlePointerDown = (event) => {
-    if (event.target.closest('.folder-backdrop, .folder-modal, .add-app-modal, .app-context-menu, .launcher-dots')) return
+    if (event.target.closest('.folder-backdrop, .folder-modal, .add-app-modal, .app-context-menu, .launcher-dots, .launcher-toolbar')) return
     const beginPan = (fromTile) => {
       cancelTrackFrame()
       if (wheelGesture.current?.timer) window.clearTimeout(wheelGesture.current.timer)
@@ -778,6 +779,33 @@ export function Launchpad({ open, items, onClose, onMerge, onRenameFolder, onDis
       onPointerCancel={() => resetPan()}
     >
       <div className="launcher-stage">
+        <div className="launcher-toolbar" onPointerDown={(event) => event.stopPropagation()}>
+          <span className="launcher-toolbar-title">我的 App</span>
+          <div className="account-area">
+            <button className="account-toggle" type="button" aria-expanded={accountMenuOpen} onClick={() => setAccountMenuOpen((value) => !value)}>
+              <span className="account-avatar">{user ? user.account.slice(0, 1).toUpperCase() : '·'}</span>
+              <span>{user ? user.account : '账户'}</span>
+              <span className="account-chevron">⌄</span>
+            </button>
+            {accountMenuOpen && (
+              <div className="account-menu" role="menu">
+                {!user ? (
+                  <>
+                    <button type="button" role="menuitem" onClick={() => { setAccountMenuOpen(false); onLogin() }}>登录</button>
+                    <button type="button" role="menuitem" onClick={() => { setAccountMenuOpen(false); onRegister() }}>注册</button>
+                  </>
+                ) : (
+                  <>
+                    <div className="account-menu-caption">{syncStatus || '已登录，配置自动同步'}</div>
+                    <button type="button" role="menuitem" onClick={() => { setAccountMenuOpen(false); onSettings() }}>账户设置</button>
+                    {user.role === 'admin' && <button type="button" role="menuitem" onClick={() => { setAccountMenuOpen(false); onAdmin() }}>运营后台</button>}
+                    <button className="danger" type="button" role="menuitem" onClick={() => { setAccountMenuOpen(false); onLogout() }}>退出登录</button>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
         <DndContext
           sensors={sensors}
           collisionDetection={mergeCollisionDetection}
