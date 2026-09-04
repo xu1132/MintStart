@@ -332,6 +332,7 @@ export function Launchpad({ open, items, user, syncStatus, onClose, onMerge, onR
   const capacity = PAGE_CAPACITY
   const [page, setPage] = useState(0)
   const sectionRef = useRef(null)
+  const accountAreaRef = useRef(null)
   const trackRef = useRef(null)
   const indicatorRef = useRef(null)
   const previousPositions = useRef(new Map())
@@ -360,6 +361,17 @@ export function Launchpad({ open, items, user, syncStatus, onClose, onMerge, onR
     }
     return result.length ? result : [[]]
   }, [capacity, items])
+
+  useEffect(() => {
+    if (!accountMenuOpen) return undefined
+
+    const closeOnOutsidePointerDown = (event) => {
+      if (!accountAreaRef.current?.contains(event.target)) setAccountMenuOpen(false)
+    }
+
+    document.addEventListener('pointerdown', closeOnOutsidePointerDown)
+    return () => document.removeEventListener('pointerdown', closeOnOutsidePointerDown)
+  }, [accountMenuOpen])
 
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 7 } }),
@@ -781,7 +793,7 @@ export function Launchpad({ open, items, user, syncStatus, onClose, onMerge, onR
       <div className="launcher-stage">
         <div className="launcher-toolbar" onPointerDown={(event) => event.stopPropagation()}>
           <span className="launcher-toolbar-title">我的 App</span>
-          <div className="account-area">
+          <div className="account-area" ref={accountAreaRef}>
             <button className="account-toggle" type="button" aria-expanded={accountMenuOpen} onClick={() => setAccountMenuOpen((value) => !value)}>
               <span className="account-avatar">{user ? user.account.slice(0, 1).toUpperCase() : '·'}</span>
               <span>{user ? user.account : '账户'}</span>
