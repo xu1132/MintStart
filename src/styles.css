@@ -521,3 +521,112 @@ body.launcher-open .start-page { filter: blur(9px); opacity: .26; transform: sca
 .admin-login-card .account-actions button:disabled { opacity: .6; cursor: default; }
 .admin-page .account-status { color: rgba(255,255,255,.5); font-size: 12px; display: block; margin-bottom: 12px; }
 .admin-page .account-status.error { color: #ffb4ab; }
+
+/* ===== 新手引导 Onboarding ===== */
+.onboarding {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  font-family: -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+}
+.onboarding-mask {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  animation: ob-fade .3s ease;
+}
+@keyframes ob-fade { from { opacity: 0 } to { opacity: 1 } }
+
+.onboarding-highlight {
+  position: fixed;
+  border-radius: 24px;
+  border: 2px solid rgba(125, 175, 255, .95);
+  box-shadow: 0 0 0 4px rgba(80, 130, 255, .25), 0 0 36px rgba(90, 150, 255, .35);
+  pointer-events: none;
+  animation: ob-pulse 1.6s ease-in-out infinite;
+}
+@keyframes ob-pulse {
+  0%, 100% { box-shadow: 0 0 0 3px rgba(80,130,255,.22), 0 0 28px rgba(90,150,255,.3); }
+  50% { box-shadow: 0 0 0 6px rgba(80,130,255,.34), 0 0 44px rgba(90,150,255,.5); }
+}
+
+.onboarding-dots {
+  position: fixed;
+  top: 22px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 7px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: rgba(16,22,38,.62);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255,255,255,.14);
+}
+.onboarding-dots span {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: rgba(255,255,255,.3);
+  transition: all .25s ease;
+}
+.onboarding-dots span.on {
+  width: 20px;
+  border-radius: 999px;
+  background: #7f9dff;
+}
+
+.onboarding-card {
+  position: fixed;
+  left: 50%;
+  bottom: clamp(24px, 6vh, 60px);
+  transform: translateX(-50%);
+  width: min(420px, calc(100vw - 32px));
+  border-radius: 22px;
+  padding: 22px 24px 18px;
+  background: rgba(21, 29, 48, .9);
+  border: 1px solid rgba(255,255,255,.16);
+  box-shadow: 0 28px 80px rgba(3,6,15,.6), inset 0 1px rgba(255,255,255,.12);
+  backdrop-filter: blur(22px) saturate(1.3);
+  color: #eef2fb;
+  animation: ob-rise .38s var(--ease, cubic-bezier(.22,1,.36,1));
+}
+@keyframes ob-rise { from { opacity: 0; transform: translate(-50%, 16px) } to { opacity: 1; transform: translate(-50%, 0) } }
+
+.onboarding-card h2 { margin: 5px 0 8px; font-size: 20px; font-weight: 500; letter-spacing: .2px; }
+.onboarding-card p { margin: 0; font-size: 13.5px; line-height: 1.7; color: rgba(238,242,251,.82); }
+.onboarding-card .launcher-kicker { color: #8fb4ff; font-size: 11px; }
+
+.onboarding-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 18px;
+}
+.onboarding-skip {
+  border: 0;
+  background: transparent;
+  color: rgba(238,242,251,.55);
+  font-size: 13px;
+  padding: 8px 12px;
+  cursor: pointer;
+  border-radius: 10px;
+}
+.onboarding-skip:hover { color: #fff; background: rgba(255,255,255,.08); }
+.onboarding-next {
+  border: 0;
+  border-radius: 12px;
+  padding: 10px 22px;
+  background: #4a7bff;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background .2s ease;
+}
+.onboarding-next:hover { background: #5f8aff; }
+
+@media (prefers-reduced-motion: reduce) {
+  .onboarding-highlight, .onboarding-card { animation: none; }
+}

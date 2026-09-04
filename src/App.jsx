@@ -5,6 +5,7 @@ import { AuthModal } from './components/AuthModal'
 import { SettingsModal } from './components/SettingsModal'
 import { AdminDashboard } from './components/AdminDashboard'
 import { AdminPage } from './components/AdminPage'
+import { OnboardingGuide } from './components/OnboardingGuide'
 import { loadApps } from './data/apps'
 import { useBingWallpaper } from './hooks/useBingWallpaper'
 import { authApi, desktopApi, getAuthToken, saveAuthToken } from './services/api'
@@ -174,6 +175,11 @@ function MainApp() {
     >
       <ClockSearch onActiveChange={setSearchActive} resetVersion={searchResetVersion} />
       </main>
+
+      <OnboardingGuide
+        launchpadOpen={launchpadOpen}
+        onOpenLaunchpad={() => setLaunchpadOpen(true)}
+      />
 
       <Launchpad
         open={launchpadOpen}
