@@ -10,7 +10,7 @@ import { loadApps } from './data/apps'
 import { DEFAULT_SEARCH_ENGINE } from './data/searchEngines'
 import { useBingWallpaper } from './hooks/useBingWallpaper'
 import { authApi, desktopApi, getAuthToken, saveAuthToken } from './services/api'
-import { dissolveFolder, mergeApps, removeDesktopApp, renameFolder, replaceDesktopApp } from './utils/desktop'
+import { dissolveFolder, mergeApps, removeDesktopApp, renameFolder, reorderApps, replaceDesktopApp } from './utils/desktop'
 
 const DESKTOP_STORAGE = 'leave-space-desktop-apps'
 
@@ -120,6 +120,10 @@ function MainApp() {
     setItems((current) => mergeApps(current, sourceId, targetId))
   }, [])
 
+  const reorder = useCallback((sourceId, targetId, placement) => {
+    setItems((current) => reorderApps(current, sourceId, targetId, placement))
+  }, [])
+
   const rename = useCallback((folderId, name) => {
     setItems((current) => renameFolder(current, folderId, name))
   }, [])
@@ -222,6 +226,7 @@ function MainApp() {
         syncStatus={syncStatus}
         onClose={() => setLaunchpadOpen(false)}
         onMerge={merge}
+        onReorder={reorder}
         onRenameFolder={rename}
         onDissolveFolder={dissolve}
         onAddApp={addApp}

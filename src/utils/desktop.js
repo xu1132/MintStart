@@ -2,6 +2,23 @@ export function itemMembers(item) {
   return item.type === 'folder' ? item.items : [item]
 }
 
+export function reorderApps(items, sourceId, targetId, placement) {
+  const sourceIndex = items.findIndex((item) => item.id === sourceId)
+  const targetIndex = items.findIndex((item) => item.id === targetId)
+  if (sourceIndex < 0 || targetIndex < 0 || sourceIndex === targetIndex) return items
+
+  const result = [...items]
+  const [source] = result.splice(sourceIndex, 1)
+  if (placement === 'before' || placement === 'after') {
+    const shiftedTargetIndex = result.findIndex((item) => item.id === targetId)
+    const insertionIndex = shiftedTargetIndex + (placement === 'after' ? 1 : 0)
+    result.splice(insertionIndex, 0, source)
+  } else {
+    result.splice(targetIndex, 0, source)
+  }
+  return result
+}
+
 export function mergeApps(items, sourceId, targetId, createId = () => `folder-${Date.now()}`) {
   const sourceIndex = items.findIndex((item) => item.id === sourceId)
   const targetIndex = items.findIndex((item) => item.id === targetId)

@@ -39,6 +39,8 @@ const PAGE_COMMIT_DISTANCE_FRACTION = 0.24
 const PAGE_COMMIT_VELOCITY = 0.28 // px/ms，约 280px/s
 // 快速甩动仍需有最小位移，防止手指轻微抖动被识别为翻页。
 const PAGE_FLING_MIN_DISTANCE = 0.035
+// 边缘停留后自动翻页，既便于跨页排序，也避免路过边缘时误触。
+const EDGE_PAGE_DWELL_DURATION = 380
 
 // 所有手势位移都经过边界钳制，避免超过可见页面范围。
 function clamp(value, min, max) {
@@ -78,6 +80,14 @@ function indicatorTransform(progress) {
   return `translate3d(${progress * PAGE_INDICATOR_STEP - 6.5}px, 0, 0)`
 }
 
+function dragPointerCoordinates({ activatorEvent, delta }) {
+  const touch = activatorEvent?.touches?.[0] || activatorEvent?.changedTouches?.[0]
+  const startX = touch?.clientX ?? activatorEvent?.clientX
+  const startY = touch?.clientY ?? activatorEvent?.clientY
+  if (!Number.isFinite(startX) || !Number.isFinite(startY)) return null
+  return { x: startX + delta.x, y: startY + delta.y }
+}
+
 // 在新的手势或新补间开始前，把当前 CSS transition 的中间位置冻结成实际像素值。
 // 否则连续快速滑动会从旧动画的起点重新计算，表现为页面突然跳动。
 function freezeTrack(track, page) {
@@ -101,18 +111,24 @@ function freezeTrack(track, page) {
   return currentX + page * width
 }
 
-const AppTile = memo(function AppTile({ item, index, onOpen, onContextMenu, fallbackIsOver }) {
+const AppTile = memo(function AppTile({ item, index, onOpen, onContextMenu, dropMode, sortSide }) {
   const { attributes, listeners, setNodeRef: setDragRef, isDragging } = useDraggable({ id: item.id })
-  const { setNodeRef: setDropRef, isOver } = useDroppable({ id: item.id })
+  const { setNodeRef: setDropRef } = useDroppable({ id: item.id })
   const setNodeRef = useCallback((node) => {
     setDragRef(node)
     setDropRef(node)
   }, [setDragRef, setDropRef])
+  const isTarget = !isDragging && Boolean(dropMode)
+  const targetClass = isTarget
+    ? dropMode === 'merge'
+      ? ' drop-target merge-ready'
+      : ` sort-target sort-${sortSide || 'after'}`
+    : ''
 
   return (
     <button
       ref={setNodeRef}
-      className={`app-tile${isDragging ? ' drag-origin' : ''}${(isOver || fallbackIsOver) && !isDragging ? ' drop-target merge-ready' : ''}`}
+      className={`app-tile${isDragging ? ' drag-origin' : ''}${targetClass}`}
       style={{ '--index': index }}
       type="button"
       data-app-tile
@@ -321,13 +337,13 @@ function AppFormModal({ item, onClose, onSave, onResolve }) {
   )
 }
 
-export function Launchpad({ open, items, user, syncStatus, onClose, onMerge, onRenameFolder, onDissolveFolder, onAddApp, onEditApp, onDeleteApp, onLogin, onRegister, onSettings, onAdmin, onLogout, onAccountMenuOpenChange }) {
+export function Launchpad({ open, items, user, syncStatus, onClose, onMerge, onReorder, onRenameFolder, onDissolveFolder, onAddApp, onEditApp, onDeleteApp, onLogin, onRegister, onSettings, onAdmin, onLogout, onAccountMenuOpenChange }) {
   const [folderId, setFolderId] = useState(null)
   const [addOpen, setAddOpen] = useState(false)
   const [editingAppId, setEditingAppId] = useState(null)
   const [contextMenu, setContextMenu] = useState(null)
   const [activeId, setActiveId] = useState(null)
-  const [fallbackOverId, setFallbackOverId] = useState(null)
+  const [dropIntent, setDropIntent] = useState(null)
   const [accountMenuOpen, setAccountMenuOpen] = useState(false)
   const capacity = PAGE_CAPACITY
   const [page, setPage] = useState(0)
@@ -337,7 +353,9 @@ export function Launchpad({ open, items, user, syncStatus, onClose, onMerge, onR
   const indicatorRef = useRef(null)
   const previousPositions = useRef(new Map())
   const suppressClickUntil = useRef(0)
-  const fallbackOverRef = useRef(null)
+  const dropIntentRef = useRef(null)
+  const edgePageTimer = useRef(0)
+  const edgePageDirection = useRef(0)
   const panRef = useRef(null)
   const pageRef = useRef(0)
   const wheelGesture = useRef(null)
@@ -372,6 +390,25 @@ export function Launchpad({ open, items, user, syncStatus, onClose, onMerge, onR
     useSensor(TouchSensor, { activationConstraint: { delay: 180, tolerance: 8 } }),
     useSensor(KeyboardSensor),
   )
+
+  const clearDropIntent = useCallback(() => {
+    dropIntentRef.current = null
+    setDropIntent(null)
+  }, [])
+
+  const updateDropIntent = useCallback((nextIntent) => {
+    const current = dropIntentRef.current
+    if (
+      current?.targetId === nextIntent?.targetId
+      && current?.mode === nextIntent?.mode
+      && current?.placement === nextIntent?.placement
+    ) return
+    dropIntentRef.current = nextIntent
+    setDropIntent(nextIntent)
+    if (nextIntent?.mode === 'merge' && current?.mode !== 'merge') {
+      navigator.vibrate?.(10)
+    }
+  }, [])
 
   const cancelTrackFrame = useCallback(() => {
     if (trackFrame.current) window.cancelAnimationFrame(trackFrame.current)
@@ -434,6 +471,29 @@ export function Launchpad({ open, items, user, syncStatus, onClose, onMerge, onR
     setPage(target)
   }, [cancelTrackFrame, drawTrack])
 
+  const clearEdgePageTimer = useCallback(() => {
+    if (edgePageTimer.current) window.clearTimeout(edgePageTimer.current)
+    edgePageTimer.current = 0
+    edgePageDirection.current = 0
+  }, [])
+
+  const scheduleEdgePage = useCallback((direction) => {
+    if (edgePageDirection.current === direction) return
+    clearEdgePageTimer()
+    if (!direction) return
+
+    edgePageDirection.current = direction
+    edgePageTimer.current = window.setTimeout(() => {
+      edgePageTimer.current = 0
+      edgePageDirection.current = 0
+      const currentPage = pageRef.current
+      const nextPage = currentPage + direction
+      if (nextPage < 0 || nextPage >= pageCountRef.current) return
+      clearDropIntent()
+      settlePage(nextPage)
+    }, EDGE_PAGE_DWELL_DURATION)
+  }, [clearDropIntent, clearEdgePageTimer, settlePage])
+
   useEffect(() => {
     if (page > pageCount - 1) settlePage(pageCount - 1)
   }, [page, pageCount, settlePage])
@@ -448,6 +508,7 @@ export function Launchpad({ open, items, user, syncStatus, onClose, onMerge, onR
     cancelTrackFrame()
     if (wheelGesture.current?.timer) window.clearTimeout(wheelGesture.current.timer)
     if (resetTimer.current) window.clearTimeout(resetTimer.current)
+    if (edgePageTimer.current) window.clearTimeout(edgePageTimer.current)
   }, [cancelTrackFrame])
 
   useEffect(() => {
@@ -460,8 +521,8 @@ export function Launchpad({ open, items, user, syncStatus, onClose, onMerge, onR
       setEditingAppId(null)
       setContextMenu(null)
       setActiveId(null)
-      setFallbackOverId(null)
-      fallbackOverRef.current = null
+      clearDropIntent()
+      clearEdgePageTimer()
 
       // 先保留用户离开时所在的页，让它和第一页一样随 Launcher 整体淡出。
       // 等容器完全透明后再无动画复位，既不露出横向回页，也保证下次从默认页打开。
@@ -473,12 +534,13 @@ export function Launchpad({ open, items, user, syncStatus, onClose, onMerge, onR
         drawTrack(0, 0)
       }, LAUNCHER_HIDE_DURATION)
     }
-  }, [cancelTrackFrame, drawTrack, open])
+  }, [cancelTrackFrame, clearDropIntent, clearEdgePageTimer, drawTrack, open])
 
   useEffect(() => {
     const onKeyDown = (event) => {
       if (!open) return
       if (event.key === 'Escape') {
+        if (activeId) return
         if (editingAppId) setEditingAppId(null)
         else if (addOpen) setAddOpen(false)
         else if (contextMenu) setContextMenu(null)
@@ -487,14 +549,14 @@ export function Launchpad({ open, items, user, syncStatus, onClose, onMerge, onR
         return
       }
       if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
-        if (folderId || addOpen || editingAppId || contextMenu) return
+        if (activeId || folderId || addOpen || editingAppId || contextMenu) return
         event.preventDefault()
         settlePage(pageRef.current + (event.key === 'ArrowRight' ? 1 : -1))
       }
     }
     document.addEventListener('keydown', onKeyDown)
     return () => document.removeEventListener('keydown', onKeyDown)
-  }, [addOpen, contextMenu, editingAppId, folderId, onClose, open, settlePage])
+  }, [activeId, addOpen, contextMenu, editingAppId, folderId, onClose, open, settlePage])
 
   // 横向滚轮（触控板双指横滑）沿用拖动同一套位移和吸附规则：
   // 持续滚动时页面跟手；停止输入一小段时间后，根据累计距离与末段速度决定翻页。
@@ -734,49 +796,166 @@ export function Launchpad({ open, items, user, syncStatus, onClose, onMerge, onR
     panRef.current = null
   }
 
+  const sortPlacementFor = (rect, { x, y }) => {
+    if (y < rect.top) return 'before'
+    if (y > rect.bottom) return 'after'
+    return x < rect.left + rect.width / 2 ? 'before' : 'after'
+  }
+
+  const normalizeSortIntent = (tile, placement, sourceId) => {
+    if (!tile || tile.dataset.id === String(sourceId)) return null
+
+    const createIntent = (targetTile, nextPlacement) => {
+      const sourceIndex = items.findIndex((item) => String(item.id) === String(sourceId))
+      const targetIndex = items.findIndex((item) => String(item.id) === targetTile.dataset.id)
+      const unchanged = nextPlacement === 'before'
+        ? sourceIndex === targetIndex - 1
+        : sourceIndex === targetIndex + 1
+      return unchanged
+        ? null
+        : { targetId: targetTile.dataset.id, mode: 'sort', placement: nextPlacement }
+    }
+
+    // 同一行中“左项之后”与“右项之前”是同一个缝隙。
+    // 内部缝隙统一归到右侧项的 before，避免光标在缝隙两边跳动。
+    if (placement === 'after') {
+      const siblings = Array.from(tile.closest('[data-page]')?.querySelectorAll('[data-id]') || [])
+      const index = siblings.indexOf(tile)
+      const nextTile = siblings[index + 1]
+      if (nextTile) {
+        const currentRect = tile.getBoundingClientRect()
+        const nextRect = nextTile.getBoundingClientRect()
+        const sameRow = Math.abs(currentRect.top - nextRect.top) < Math.min(currentRect.height, nextRect.height) / 2
+        if (sameRow) {
+          if (nextTile.dataset.id === String(sourceId)) return null
+          return createIntent(nextTile, 'before')
+        }
+      }
+    }
+
+    return createIntent(tile, placement)
+  }
+
+  const resolvePointerDropIntent = (coordinates, sourceId) => {
+    const track = trackRef.current
+    if (!track) return null
+
+    const sourceTile = Array.from(track.querySelectorAll('[data-id]'))
+      .find((tile) => tile.dataset.id === String(sourceId))
+    const sourceRect = sourceTile?.getBoundingClientRect()
+    if (
+      sourceRect
+      && coordinates.x >= sourceRect.left
+      && coordinates.x <= sourceRect.right
+      && coordinates.y >= sourceRect.top
+      && coordinates.y <= sourceRect.bottom
+    ) return null
+
+    const element = document.elementFromPoint(coordinates.x, coordinates.y)
+    const directTile = element?.closest('[data-id]')
+    if (directTile && track.contains(directTile) && directTile.dataset.id !== String(sourceId)) {
+      const iconRect = directTile.querySelector('.app-icon')?.getBoundingClientRect()
+      const overIcon = iconRect
+        && coordinates.x >= iconRect.left
+        && coordinates.x <= iconRect.right
+        && coordinates.y >= iconRect.top
+        && coordinates.y <= iconRect.bottom
+      if (overIcon) return { targetId: directTile.dataset.id, mode: 'merge' }
+
+      return normalizeSortIntent(
+        directTile,
+        sortPlacementFor(directTile.getBoundingClientRect(), coordinates),
+        sourceId,
+      )
+    }
+
+    // 图标之间没有 droppable 节点：在当前页内找最近的项目，把间隙解释为排序插入位。
+    const currentPage = track.querySelector(`[data-page="${pageRef.current}"]`)
+    const pageRect = currentPage?.getBoundingClientRect()
+    if (
+      !currentPage
+      || !pageRect
+      || coordinates.x < pageRect.left
+      || coordinates.x > pageRect.right
+      || coordinates.y < pageRect.top
+      || coordinates.y > pageRect.bottom
+    ) return null
+
+    let nearest = null
+    currentPage.querySelectorAll('[data-id]').forEach((tile) => {
+      const rect = tile.getBoundingClientRect()
+      const dx = Math.max(rect.left - coordinates.x, 0, coordinates.x - rect.right)
+      const dy = Math.max(rect.top - coordinates.y, 0, coordinates.y - rect.bottom)
+      const distance = dx * dx + dy * dy
+      if (!nearest || distance < nearest.distance) nearest = { tile, rect, distance }
+    })
+    if (!nearest || nearest.tile.dataset.id === String(sourceId)) return null
+    return normalizeSortIntent(
+      nearest.tile,
+      sortPlacementFor(nearest.rect, coordinates),
+      sourceId,
+    )
+  }
+
   const updateFallbackOver = (event) => {
-    if (!activeId) return
-    const tile = document.elementFromPoint(event.clientX, event.clientY)?.closest('[data-id]')
-    if (!tile) {
-      // 指针悬在空白处：清掉之前的高亮，避免翻页后误合并到旧页图标
-      if (fallbackOverRef.current !== null) {
-        fallbackOverRef.current = null
-        setFallbackOverId(null)
-      }
-      // 拖到左右边缘的空白区域自动翻页
-      const rect = event.currentTarget.getBoundingClientRect()
-      const edge = 72
-      const currentPage = pageRef.current
-      if (currentPage > 0 && event.clientX < rect.left + edge) {
-        settlePage(currentPage - 1)
-        return
-      }
-      if (currentPage < pageCountRef.current - 1 && event.clientX > rect.right - edge) {
-        settlePage(currentPage + 1)
-        return
-      }
+    const coordinates = dragPointerCoordinates(event)
+    if (!coordinates) return
+    const { x: clientX, y: clientY } = coordinates
+    const nextIntent = resolvePointerDropIntent(coordinates, event.active.id)
+    const sectionRect = sectionRef.current?.getBoundingClientRect()
+    if (sectionRect) {
+      const edge = 56
+      const canGoPrevious = pageRef.current > 0
+      const canGoNext = pageRef.current < pageCountRef.current - 1
+      // 命中有效图标时优先排序/合并，防止移动端首尾列被边缘翻页抢走。
+      const direction = !nextIntent && canGoPrevious && clientX <= sectionRect.left + edge
+        ? -1
+        : !nextIntent && canGoNext && clientX >= sectionRect.right - edge
+          ? 1
+          : 0
+      scheduleEdgePage(direction)
+    }
+    updateDropIntent(nextIntent)
+  }
+
+  const updateKeyboardOver = (event) => {
+    if (dragPointerCoordinates(event)) return
+    const targetId = event.over?.id != null ? String(event.over.id) : null
+    if (!targetId || targetId === String(event.active.id)) {
+      updateDropIntent(null)
       return
     }
-    const nextId = tile.dataset.id !== activeId ? tile.dataset.id : null
-    if (nextId === fallbackOverRef.current) return
-    fallbackOverRef.current = nextId
-    setFallbackOverId(nextId)
+    const sourceIndex = items.findIndex((item) => item.id === event.active.id)
+    const targetIndex = items.findIndex((item) => item.id === targetId)
+    updateDropIntent({
+      targetId,
+      mode: 'sort',
+      placement: sourceIndex < targetIndex ? 'after' : 'before',
+    })
+    const targetPage = Math.floor((targetIndex + 1) / capacity)
+    if (targetPage !== pageRef.current) settlePage(targetPage)
   }
 
-  const clearFallbackOver = () => {
-    fallbackOverRef.current = null
-    setFallbackOverId(null)
-  }
-
-  const finishDrag = ({ active, over }) => {
-    const targetId = over?.id || fallbackOverRef.current
+  const finishDrag = (event) => {
+    const { active, over } = event
+    const intent = dropIntentRef.current
+    const coordinates = dragPointerCoordinates(event)
+    const keyboardMoved = Math.abs(event.delta.x) > 1 || Math.abs(event.delta.y) > 1
+    const finalIntent = coordinates
+      ? resolvePointerDropIntent(coordinates, active.id)
+      : intent || (over?.id ? { targetId: String(over.id), mode: 'sort' } : null)
+    // 指针/触摸拖动时 DOM 命中是最终权威：空白处松手应取消，不回退到切页前的旧 over。
+    // 键盘拖动没有指针坐标，仍使用 dnd-kit 的 over 结果。
+    const targetId = finalIntent?.targetId
     setActiveId(null)
-    clearFallbackOver()
+    clearEdgePageTimer()
+    clearDropIntent()
     suppressClickUntil.current = Date.now() + 320
-    if (!targetId || active.id === targetId) return
+    if (!coordinates && !keyboardMoved) return
+    if (!targetId || String(active.id) === String(targetId)) return
     capturePositions()
-    onMerge(active.id, targetId)
-    navigator.vibrate?.(10)
+    if (finalIntent.mode === 'merge') onMerge(active.id, targetId)
+    else onReorder(active.id, targetId, finalIntent.placement)
   }
 
   const trackStyle = {
@@ -829,14 +1008,18 @@ export function Launchpad({ open, items, user, syncStatus, onClose, onMerge, onR
           autoScroll={false}
           onDragStart={({ active }) => {
             suppressClickUntil.current = Date.now() + 260
-            clearFallbackOver()
+            clearDropIntent()
+            clearEdgePageTimer()
             resetPan()
-            setActiveId(active.id)
+            setActiveId(String(active.id))
           }}
+          onDragMove={updateFallbackOver}
+          onDragOver={updateKeyboardOver}
           onDragEnd={finishDrag}
           onDragCancel={() => {
             setActiveId(null)
-            clearFallbackOver()
+            clearDropIntent()
+            clearEdgePageTimer()
             resetPan()
           }}
         >
@@ -852,14 +1035,15 @@ export function Launchpad({ open, items, user, syncStatus, onClose, onMerge, onR
                       index={index}
                       onOpen={openItem}
                       onContextMenu={openContextMenu}
-                      fallbackIsOver={fallbackOverId === entry.id}
+                      dropMode={dropIntent?.targetId === entry.id ? dropIntent.mode : null}
+                      sortSide={dropIntent?.targetId === entry.id ? dropIntent.placement : null}
                     />
                   ))}
               </div>
             ))}
           </div>
           {createPortal(
-            <DragOverlay adjustScale={false} dropAnimation={null}>
+            <DragOverlay adjustScale={false} dropAnimation={null} style={{ pointerEvents: 'none' }}>
               {activeItem ? (
                 <div className="app-tile app-drag-overlay" aria-hidden="true">
                   <AppIcon item={activeItem} />

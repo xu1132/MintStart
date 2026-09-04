@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { DEFAULT_SEARCH_ENGINE, normalizeSearchEngine, SEARCH_ENGINES } from '../data/searchEngines'
+import { submitSearch } from '../utils/search'
 
 const OPEN_DELAY = 110
 const CLOSE_DELAY = 240
@@ -96,13 +97,13 @@ export function ClockSearch({ onActiveChange, onEngineChange, preferredEngine = 
 
   const submit = (event) => {
     event.preventDefault()
-    const query = new FormData(event.currentTarget).get('query')?.trim()
-    if (!query) return inputRef.current?.focus()
-    const looksLikeUrl = /^(https?:\/\/|www\.)/i.test(query) || /^[\w-]+\.[a-z]{2,}(\/.*)?$/i.test(query)
-    const destination = looksLikeUrl
-      ? (query.startsWith('http') ? query : `https://${query}`)
-      : `${engine.url}${encodeURIComponent(query)}`
-    window.open(destination, '_blank', 'noopener')
+    const form = event.currentTarget
+    const query = new FormData(form).get('query')
+    const submitted = submitSearch(query, engine, {
+      open: (...args) => window.open(...args),
+      clear: () => form.reset(),
+    })
+    if (!submitted) inputRef.current?.focus()
   }
 
   return (

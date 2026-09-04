@@ -1,10 +1,39 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { createDesktopApp, dissolveFolder, mergeApps, normalizeAppUrl, removeDesktopApp, renameFolder, replaceDesktopApp } from '../src/utils/desktop.js'
+import { createDesktopApp, dissolveFolder, mergeApps, normalizeAppUrl, removeDesktopApp, renameFolder, reorderApps, replaceDesktopApp } from '../src/utils/desktop.js'
 
 const alpha = { id: 'a', name: 'Alpha', url: 'https://a.example' }
 const beta = { id: 'b', name: 'Beta', url: 'https://b.example' }
 const gamma = { id: 'c', name: 'Gamma', url: 'https://c.example' }
+
+test('dragging an app forward moves it to the target position', () => {
+  assert.deepEqual(reorderApps([alpha, beta, gamma], 'a', 'c'), [beta, gamma, alpha])
+})
+
+test('dragging an app backward moves it to the target position', () => {
+  assert.deepEqual(reorderApps([alpha, beta, gamma], 'c', 'a'), [gamma, alpha, beta])
+})
+
+test('dropping beside a tile respects the before or after insertion side', () => {
+  assert.deepEqual(reorderApps([alpha, beta, gamma], 'a', 'c', 'before'), [beta, alpha, gamma])
+  assert.deepEqual(reorderApps([alpha, beta, gamma], 'c', 'a', 'after'), [alpha, gamma, beta])
+})
+
+test('reordering with identical or missing ids leaves the original list untouched', () => {
+  const items = [alpha, beta, gamma]
+  assert.equal(reorderApps(items, 'b', 'b'), items)
+  assert.equal(reorderApps(items, 'missing', 'a'), items)
+  assert.equal(reorderApps(items, 'a', 'missing'), items)
+})
+
+test('folders and apps can be reordered across a page boundary as top-level items', () => {
+  const folder = { id: 'folder-1', type: 'folder', name: '工作', items: [alpha] }
+  const items = Array.from({ length: 16 }, (_, index) => ({ id: `app-${index}`, name: `App ${index}` }))
+  items[13] = folder
+  const result = reorderApps(items, 'folder-1', 'app-15')
+  assert.equal(result[15], folder)
+  assert.deepEqual(result.slice(13, 15).map((item) => item.id), ['app-14', 'app-15'])
+})
 
 test('dropping an app onto another app creates a folder with both icons', () => {
   const result = mergeApps([alpha, beta, gamma], 'a', 'b', () => 'folder-1')

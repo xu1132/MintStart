@@ -184,7 +184,7 @@ body.launcher-open .start-page { filter: blur(9px); opacity: .26; transform: sca
 .account-menu button.danger { color: #ff918a; }
 .account-menu-caption { padding: 7px 10px 8px; overflow: hidden; border-bottom: 1px solid rgba(255,255,255,.1); color: rgba(255,255,255,.45); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
 .launcher-pages { display: flex; align-items: stretch; backface-visibility: hidden; transform: translate3d(0,0,0); transition: transform 300ms cubic-bezier(.4,0,.2,1); will-change: transform; }
-.app-page { flex: 0 0 100%; min-width: 0; align-content: start; padding-top: 16px; contain: layout paint; backface-visibility: hidden; }
+.app-page { flex: 0 0 100%; min-width: 0; align-content: start; padding: 16px calc(var(--app-column-gap) / 2 + 4px) 0; contain: layout paint; backface-visibility: hidden; }
 .launcher-dots {
   position: relative;
   align-self: center;
@@ -208,7 +208,7 @@ body.launcher-open .start-page { filter: blur(9px); opacity: .26; transform: sca
   will-change: transform;
   pointer-events: none;
 }
-.app-grid { display: grid; grid-template-columns: repeat(5,minmax(76px,1fr)); gap: clamp(30px,5vh,54px) clamp(19px,3.5vw,42px); }
+.app-grid { --app-column-gap: clamp(19px,3.5vw,42px); display: grid; grid-template-columns: repeat(5,minmax(76px,1fr)); gap: clamp(30px,5vh,54px) var(--app-column-gap); }
 .app-tile {
   --delay: calc(var(--index,0) * 16ms);
   min-width: 0;
@@ -248,7 +248,7 @@ body.launcher-open .start-page { filter: blur(9px); opacity: .26; transform: sca
 .app-monogram { font-size: 19px; font-weight: 750; letter-spacing: -.06em; }
 .app-tile:hover .app-icon { transform: translateY(-3px) scale(1.035); box-shadow: 0 15px 29px rgba(3,7,17,.31), inset 0 1px rgba(255,255,255,.28); }
 .app-name { max-width: 100%; overflow: hidden; color: rgba(255,255,255,.92); font-size: 12px; font-weight: 500; text-overflow: ellipsis; text-shadow: 0 1px 4px rgba(0,0,0,.25); white-space: nowrap; }
-.app-tile.drag-origin { opacity: .16; pointer-events: none; transform: scale(.86); transition: opacity .16s ease, transform .24s var(--ease); }
+.app-tile.drag-origin { opacity: .16; outline: none; pointer-events: none; transform: scale(.86); transition: opacity .16s ease, transform .24s var(--ease); }
 .app-drag-overlay {
   width: clamp(76px, 8vw, 104px);
   z-index: 100;
@@ -259,9 +259,24 @@ body.launcher-open .start-page { filter: blur(9px); opacity: .26; transform: sca
   will-change: transform;
 }
 .app-drag-overlay .app-name { opacity: .42; }
+.app-tile.sort-target::before {
+  content: "";
+  width: 4px;
+  position: absolute;
+  top: -7px;
+  bottom: -5px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.96);
+  animation: sort-target-in .16s var(--ease) both;
+  pointer-events: none;
+}
+.app-tile.sort-before::before { left: calc(var(--app-column-gap) / -2 - 2px); }
+.app-tile.sort-after::before { right: calc(var(--app-column-gap) / -2 - 2px); }
+.app-tile.sort-target .app-icon { transform: scale(.94); }
 .app-tile.drop-target::before { content: ""; width: 96px; height: 96px; position: absolute; top: -11px; left: 50%; border: 2px solid rgba(255,255,255,.45); border-radius: 30px; background: rgba(255,255,255,.1); transform: translateX(-50%) scale(.76); animation: target-breathe .65s ease-in-out infinite alternate; }
 .app-tile.drop-target .app-icon { transform: scale(.9); }
 .app-tile.merge-ready::before { border-color: rgba(255,255,255,.95); background: rgba(255,255,255,.18); animation: merge-lock .22s var(--ease) forwards; }
+@keyframes sort-target-in { from { opacity: 0; transform: scaleY(.55); } }
 @keyframes target-breathe { to { transform: translateX(-50%) scale(1); } }
 @keyframes merge-lock { to { transform: translateX(-50%) scale(1.05); } }
 
@@ -444,7 +459,7 @@ body.launcher-open .start-page { filter: blur(9px); opacity: .26; transform: sca
   .search-form input { font-size: 14px; }
   .search-form > button { width: 39px; height: 39px; margin-left: 6px; }
   .launcher { padding: 108px 24px 35px; }
-  .app-grid { grid-template-columns: repeat(5,minmax(42px,1fr)); gap: 31px 8px; }
+  .app-grid { --app-column-gap: 8px; grid-template-columns: repeat(5,minmax(42px,1fr)); gap: 31px var(--app-column-gap); }
   .app-icon { width: clamp(48px,13vw,57px); border-radius: 17px; }
   .folder-icon { padding: 8px; }
   .folder-modal { padding: 25px 20px; border-radius: 24px; }
