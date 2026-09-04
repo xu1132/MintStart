@@ -169,7 +169,32 @@ body.launcher-open .start-page { filter: blur(9px); opacity: .26; transform: sca
   transition: opacity .2s ease;
 }
 .launcher.show { opacity: 1; pointer-events: auto; }
-.launcher-stage { width: min(960px,100%); display: flex; flex-direction: column; overflow: hidden; contain: layout paint; transform: scale(1.045); filter: blur(5px); transition: transform .3s var(--ease), filter .22s ease; }
+.launcher-stage {
+  /*
+   * 左右拖拽排序指示条需要越过 app-page 的边缘。
+   * stage 外框因此额外扩出两个 edge-slot，但 padding 会把内容区重新扣回原来的宽度：
+   *   桌面：内容区仍然最大 960px
+   *   小屏：内容区仍然等于原先可用宽度
+   *
+   * 这样 toolbar 和 app-page 的实际内容坐标都不会改变。
+   */
+  --app-column-gap: clamp(19px,3.5vw,42px);
+  --app-edge-slot: calc(var(--app-column-gap) / 2 + 4px);
+
+  width: min(
+    calc(960px + var(--app-edge-slot) + var(--app-edge-slot)),
+    calc(100% + var(--app-edge-slot) + var(--app-edge-slot))
+  );
+  padding-inline: var(--app-edge-slot);
+
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  contain: layout paint;
+  transform: scale(1.045);
+  filter: blur(5px);
+  transition: transform .3s var(--ease), filter .22s ease;
+}
 .launcher.show .launcher-stage { transform: scale(1); filter: none; }
 .launcher-toolbar { position: relative; z-index: 5; display: flex; align-items: center; justify-content: space-between; min-height: 42px; padding: 0 2px 7px; }
 .launcher-toolbar-title { color: rgba(255,255,255,.7); font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
@@ -183,8 +208,45 @@ body.launcher-open .start-page { filter: blur(9px); opacity: .26; transform: sca
 .account-menu button:hover { background: rgba(255,255,255,.13); }
 .account-menu button.danger { color: #ff918a; }
 .account-menu-caption { padding: 7px 10px 8px; overflow: hidden; border-bottom: 1px solid rgba(255,255,255,.1); color: rgba(255,255,255,.45); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
-.launcher-pages { display: flex; align-items: stretch; backface-visibility: hidden; transform: translate3d(0,0,0); transition: transform 300ms cubic-bezier(.4,0,.2,1); will-change: transform; }
-.app-page { flex: 0 0 100%; min-width: 0; align-content: start; padding: 16px calc(var(--app-column-gap) / 2 + 4px) 0; contain: layout paint; backface-visibility: hidden; }
+.launcher-pages {
+  /*
+   * track 要覆盖 stage 的整个 border-box（包含左右 edge-slot）。
+   * stage 的内容区因为 padding 会比外框窄，所以这里把 track 向两边各扩一个 slot。
+   *
+   * 这样每一页的实际分页步长就是：
+   *   960px 内容 + 左 slot + 右 slot
+   * 下一页会从 stage 的右边界之后开始，不会再露出名字。
+   */
+  width: calc(100% + var(--app-edge-slot) + var(--app-edge-slot));
+  margin-left: calc(var(--app-edge-slot) * -1);
+
+  display: flex;
+  align-items: stretch;
+  backface-visibility: hidden;
+  transform: translate3d(0,0,0);
+  transition: transform 300ms cubic-bezier(.4,0,.2,1);
+  will-change: transform;
+}
+.app-page {
+  /*
+   * page 宽度等于完整 track 视口宽度。
+   * 左右 slot 作为 page 自己的 padding：
+   * - App 内容区仍然保持原来的 960px
+   * - 第一列/第五列外侧有空间显示排序插槽
+   * - 相邻 page 从当前 stage 边界之外才开始
+   */
+  flex: 0 0 100%;
+  min-width: 0;
+  align-content: start;
+
+  padding:
+    16px
+    var(--app-edge-slot)
+    0;
+
+  contain: layout;
+  backface-visibility: hidden;
+}
 .launcher-dots {
   position: relative;
   align-self: center;
@@ -208,7 +270,11 @@ body.launcher-open .start-page { filter: blur(9px); opacity: .26; transform: sca
   will-change: transform;
   pointer-events: none;
 }
-.app-grid { --app-column-gap: clamp(19px,3.5vw,42px); display: grid; grid-template-columns: repeat(5,minmax(76px,1fr)); gap: clamp(30px,5vh,54px) var(--app-column-gap); }
+.app-grid {
+  display: grid;
+  grid-template-columns: repeat(5,minmax(76px,1fr));
+  gap: clamp(30px,5vh,54px) var(--app-column-gap);
+}
 .app-tile {
   --delay: calc(var(--index,0) * 16ms);
   min-width: 0;
@@ -459,7 +525,8 @@ body.launcher-open .start-page { filter: blur(9px); opacity: .26; transform: sca
   .search-form input { font-size: 14px; }
   .search-form > button { width: 39px; height: 39px; margin-left: 6px; }
   .launcher { padding: 108px 24px 35px; }
-  .app-grid { --app-column-gap: 8px; grid-template-columns: repeat(5,minmax(42px,1fr)); gap: 31px var(--app-column-gap); }
+  .launcher-stage { --app-column-gap: 8px; }
+  .app-grid { grid-template-columns: repeat(5,minmax(42px,1fr)); gap: 31px var(--app-column-gap); }
   .app-icon { width: clamp(48px,13vw,57px); border-radius: 17px; }
   .folder-icon { padding: 8px; }
   .folder-modal { padding: 25px 20px; border-radius: 24px; }
