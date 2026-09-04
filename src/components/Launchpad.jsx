@@ -27,50 +27,47 @@ function mergeCollisionDetection(args) {
 const PAGE_ROWS = 3
 const PAGE_COLUMNS = 5
 const PAGE_CAPACITY = PAGE_COLUMNS * PAGE_ROWS
+// 所有翻页入口（拖动、滚轮、圆点、键盘）共用同一条补间曲线，避免手感割裂。
 const PAGE_SWITCH_EASING = 'cubic-bezier(.4,0,.2,1)'
 const PAGE_SWITCH_TRANSITION = `transform 300ms ${PAGE_SWITCH_EASING}`
 const PAGE_INDICATOR_STEP = 17
-// 两页之间保留"走不通"的留白段：越过 FULL_FRACTION 才翻页，
-// 因此纯位移最多到 (FULL - RESIST)/2，永远到不了整页——没卡住一说。
-const PAGE_COMMIT_FULL_FRACTION = 0.24
-const PAGE_COMMIT_RESIST_FRACTION = 0.09
-const PAGE_COMMIT_VELOCITY = 0.32 // px/ms，甩动加速度门槛，与 iOS/macOS 一致手感
+// 普通慢拖越过页面宽度的 24% 即翻页；不需要拉到半屏，保持操作轻量。
+const PAGE_COMMIT_DISTANCE_FRACTION = 0.24
+// 快速甩动阈值，单位为 px/ms（0.28 约等于 280px/s）。
+const PAGE_COMMIT_VELOCITY = 0.28 // px/ms，约 280px/s
+// 快速甩动仍需有最小位移，防止手指轻微抖动被识别为翻页。
+const PAGE_FLING_MIN_DISTANCE = 0.035
 
+// 所有手势位移都经过边界钳制，避免超过可见页面范围。
 function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value))
 }
 
-// 档位式橡皮筋映射：小幅跟手 1:1，过零界后位移衰减封顶，
-// 手指怎样都到不了下一页（两页之间始终留一段走不通的空白）。
-function rubberBandToward(absRaw, width) {
-  const full = width * PAGE_COMMIT_FULL_FRACTION
-  const resist = width * PAGE_COMMIT_RESIST_FRACTION
-  if (absRaw <= full) return absRaw
-  return clamp(full + (absRaw - full) * 0.24, full, full + resist)
-}
-
-// 硬边界外的橡皮筋（首/末页外侧）：阻尼大、行程短
-function rubberBandOverscroll(absRaw) {
-  if (absRaw <= 10) return absRaw
-  return Math.min(10 + (absRaw - 10) * 0.22, 76)
-}
-
-// 松手/停顿时判定：投影过零界 → 下一页；快速甩动 → 也放行；否则弹回
+// `raw` 是相对当前页的真实横向位移：负数向左（下一页），正数向右（上一页）。
+// 拖动过程始终 1:1 跟手；这里只在松手时决定应该吸附到哪一页。
 function resolvePageStep({ raw, velocity, width, canPrev, canNext }) {
-  const commit = Math.max(60, width * PAGE_COMMIT_FULL_FRACTION)
-  const projected = Math.abs(raw + velocity * 80)
-  const fling = Math.abs(velocity) > PAGE_COMMIT_VELOCITY
-  if (raw < 0) return (projected > commit || fling) && canNext ? 1 : 0
-  return (projected > commit || fling) && canPrev ? -1 : 0
+  const distance = Math.abs(raw)
+  // 慢拖采用位移阈值，避免用户缓慢、明确地拖过一段距离后仍被弹回。
+  const passedDistance = distance >= width * PAGE_COMMIT_DISTANCE_FRACTION
+  // 快速甩动可在较短距离内直接翻页，但必须通过最小位移过滤轻微抖动。
+  const fling = distance >= Math.max(18, width * PAGE_FLING_MIN_DISTANCE)
+    && Math.abs(velocity) >= PAGE_COMMIT_VELOCITY
+  const commit = passedDistance || fling
+  // 边界页没有相邻页面时，即便满足阈值也只能回到当前页。
+  if (raw < 0) return commit && canNext ? 1 : 0
+  return commit && canPrev ? -1 : 0
 }
 
+// 无阻尼方案：内容直接按手指位移移动。
+// 每次最多露出相邻的一整页；首尾页朝外拖动时钳在 0，不产生橡皮筋位移。
 function panOffsetFor(raw, base, pageCount, width) {
-  const atStart = base <= 0
-  const atEnd = base >= pageCount - 1
-  if (raw < 0) return atEnd ? -rubberBandOverscroll(-raw) : -rubberBandToward(-raw, width)
-  return atStart ? rubberBandOverscroll(raw) : rubberBandToward(raw, width)
+  const minOffset = base < pageCount - 1 ? -width : 0
+  const maxOffset = base > 0 ? width : 0
+  return clamp(raw, minOffset, maxOffset)
 }
 
+// 页面定位由“第几页的百分比位移”加“本次手势的像素位移”组成。
+// 用 translate3d 让浏览器将连续拖动合成到 GPU 图层，避免触发布局重排。
 function pageTransform(page, offset = 0) {
   return `translate3d(calc(${-page * 100}% + ${offset}px), 0, 0)`
 }
@@ -79,6 +76,8 @@ function indicatorTransform(progress) {
   return `translate3d(${progress * PAGE_INDICATOR_STEP - 6.5}px, 0, 0)`
 }
 
+// 在新的手势或新补间开始前，把当前 CSS transition 的中间位置冻结成实际像素值。
+// 否则连续快速滑动会从旧动画的起点重新计算，表现为页面突然跳动。
 function freezeTrack(track, page) {
   const width = track.clientWidth || 1
   const transform = window.getComputedStyle(track).transform
@@ -94,6 +93,7 @@ function freezeTrack(track, page) {
     }
   }
 
+  // 先关闭过渡并写入当前坐标；调用方会强制一次布局后再启动下一段过渡。
   track.style.transition = 'none'
   track.style.transform = `translate3d(${currentX}px, 0, 0)`
   return currentX + page * width
@@ -372,12 +372,14 @@ export function Launchpad({ open, items, onClose, onMerge, onRenameFolder, onDis
   const drawTrack = useCallback((base, offset = 0, transition = 'none') => {
     const track = trackRef.current
     if (!track) return
+    // 直接写 DOM 样式，不把高频移动放进 React state，避免每个 PointerMove 都触发整棵组件树渲染。
     track.style.transition = transition
     track.style.transform = pageTransform(base, offset)
 
     const indicator = indicatorRef.current
     if (indicator) {
       const width = track.clientWidth || 1
+      // 指示器接受小数进度，因此拖动时会和页面同步跟随，而不是松手后才跳到下一颗圆点。
       const progress = clamp(base - offset / width, 0, pageCountRef.current - 1)
       indicator.style.transition = transition
       indicator.style.transform = indicatorTransform(progress)
@@ -386,6 +388,7 @@ export function Launchpad({ open, items, onClose, onMerge, onRenameFolder, onDis
 
   const scheduleTrack = useCallback((base, offset) => {
     pendingTrackPosition.current = { base, offset }
+    // 输入事件频率可能高于屏幕刷新率；同一帧只保留最后一个位置，保证每帧最多一次样式写入。
     if (trackFrame.current) return
     trackFrame.current = window.requestAnimationFrame(() => {
       trackFrame.current = 0
@@ -406,11 +409,14 @@ export function Launchpad({ open, items, onClose, onMerge, onRenameFolder, onDis
 
     if (track) {
       const width = track.clientWidth || 1
+      // 从当前可见的中间位置起算距离，而不是假定此前已经静止在某一页。
+      // 这让用户可以在动画尚未结束时立刻反向拖动，不会出现跳帧。
       const distanceToTarget = Math.abs(freezeTrack(track, target))
       const distanceRatio = clamp(distanceToTarget / width, 0, 1)
       const duration = Math.round(clamp(210 + distanceRatio * 100 - Math.abs(velocity) * 45, 170, 310))
-      // 页面与指示器使用同一时长、同一缓动直接落位。
+      // 强制浏览器确认“冻结位置”后再写入目标位置，确保 transition 从当前帧平滑续接。
       track.getBoundingClientRect()
+      // 页面与指示器使用同一时长、同一缓动直接落位。
       drawTrack(target, 0, `transform ${duration}ms ${PAGE_SWITCH_EASING}`)
     }
 
@@ -469,7 +475,8 @@ export function Launchpad({ open, items, onClose, onMerge, onRenameFolder, onDis
     return () => document.removeEventListener('keydown', onKeyDown)
   }, [addOpen, contextMenu, editingAppId, folderId, onClose, open, settlePage])
 
-  // 横向滚轮（触控板双指横滑）跟手翻页：手指持续跟动，停顿后吸附
+  // 横向滚轮（触控板双指横滑）沿用拖动同一套位移和吸附规则：
+  // 持续滚动时页面跟手；停止输入一小段时间后，根据累计距离与末段速度决定翻页。
   useEffect(() => {
     const section = sectionRef.current
     if (!section) return
@@ -593,6 +600,7 @@ export function Launchpad({ open, items, onClose, onMerge, onRenameFolder, onDis
       if (wheelGesture.current?.timer) window.clearTimeout(wheelGesture.current.timer)
       wheelGesture.current = null
       const base = pageRef.current
+      // 若上一段补间尚未结束，先读取并冻结其实际位置；新手势从眼前的位置继续，而非从目标页重新开始。
       const startOffset = trackRef.current ? freezeTrack(trackRef.current, base) : 0
       const now = performance.now()
       panRef.current = {
@@ -608,7 +616,8 @@ export function Launchpad({ open, items, onClose, onMerge, onRenameFolder, onDis
     }
 
     if (event.target.closest('[data-app-tile]')) {
-      // 鼠标在图标上按下是拖拽；触摸则允许快速横滑翻页（长按仍由 dnd 接管为拖拽）
+      // 鼠标在图标上按下默认交给 dnd-kit 拖拽；触摸端允许“快速横滑翻页”。
+      // 长按/慢拖会让出给 dnd-kit，以保留拖图标合并文件夹的交互。
       if (event.pointerType !== 'touch') return
       if (contextMenu) return
       beginPan(true)
@@ -626,11 +635,13 @@ export function Launchpad({ open, items, onClose, onMerge, onRenameFolder, onDis
     if (activeId) return
     const pan = panRef.current
     if (!pan) return
+    // 高刷设备可能把多个硬件采样合并为一个事件；采用最后一个采样点可减少手指与页面的滞后。
     const coalesced = event.nativeEvent?.getCoalescedEvents?.()
     const point = coalesced?.[coalesced.length - 1] || event
     const dx = point.clientX - pan.x0
     const dy = point.clientY - pan.y0
     if (pan.mode === null) {
+      // 7px 死区吸收点击时的轻微抖动，避免普通点击被误判为滑动。
       if (Math.hypot(dx, dy) < 7) return
       const horizontal = Math.abs(dx) > Math.abs(dy)
       if (pan.fromTile && !horizontal) {
@@ -648,16 +659,18 @@ export function Launchpad({ open, items, onClose, onMerge, onRenameFolder, onDis
         return
       }
       if (!pan.captured) {
+        // 手势一旦判定为横向翻页，捕获指针，确保滑到图标外/容器外仍可收到 Move 与 Up。
         try { event.currentTarget.setPointerCapture(event.pointerId) } catch { /* noop */ }
         pan.captured = true
       }
     }
+    // 保留最近一段轨迹，用于区分快速甩动与慢拖。轨迹过长会稀释末段速度，因此最多保留 10 个点。
     pan.trail.push({ x: point.clientX, t: performance.now() })
     if (pan.trail.length > 10) pan.trail.shift()
     const track = trackRef.current
     if (!track) return
     const width = track.clientWidth || 1
-    // 档位式橡皮筋：小幅灵活跟手，过零界后越走越慢、永远走不到下一页
+    // 无阻尼直跟手：只在首尾页钳制，松手后再决定翻页还是回弹
     const offset = panOffsetFor(pan.startOffset + dx, pan.base, pageCountRef.current, width)
     scheduleTrack(pan.base, offset)
   }
@@ -668,7 +681,7 @@ export function Launchpad({ open, items, onClose, onMerge, onRenameFolder, onDis
     if (pan.mode === 'pan') {
       const dx = event.clientX - pan.x0
       const width = trackRef.current?.clientWidth || 1
-      // 用最近一小段轨迹的速度做松手判定：轻推投影过零界或快速甩动即翻页，否则弹回原位
+      // 用最近一小段轨迹计算松手速度：慢拖看位移阈值，快甩可在较短距离内翻页。
       let velocity = 0
       const trail = pan.trail
       if (trail.length >= 2) {
