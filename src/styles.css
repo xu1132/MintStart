@@ -630,3 +630,44 @@ body.launcher-open .start-page { filter: blur(9px); opacity: .26; transform: sca
 @media (prefers-reduced-motion: reduce) {
   .onboarding-highlight, .onboarding-card { animation: none; }
 }
+
+/* 步骤3：整体放行点击（穿透到 start-page），气泡与进度点单独可点 */
+.onboarding.click-through { pointer-events: none; }
+.onboarding.click-through .onboarding-card,
+.onboarding.click-through .onboarding-dots { pointer-events: auto; }
+
+/* 空白处闪光点 */
+.onboarding-dot {
+  position: fixed;
+  transform: translate(-50%, -50%);
+  width: 44px; height: 44px;
+  pointer-events: none;
+}
+.onboarding-dot-ring {
+  position: absolute; inset: 0;
+  border-radius: 50%;
+  border: 2px solid rgba(130, 180, 255, .9);
+  animation: ob-ring 1.5s cubic-bezier(.2, .6, .4, 1) infinite;
+}
+.onboarding-dot-ring::after {
+  content: "";
+  position: absolute; inset: -14px;
+  border-radius: 50%;
+  border: 1px solid rgba(130, 180, 255, .35);
+}
+@keyframes ob-ring {
+  0% { transform: scale(.6); opacity: 0; }
+  25% { opacity: 1; }
+  100% { transform: scale(1.5); opacity: 0; }
+}
+.onboarding-dot-core {
+  position: absolute; inset: 12px;
+  border-radius: 50%;
+  background: rgba(140, 190, 255, .95);
+  box-shadow: 0 0 18px rgba(120, 175, 255, .9), 0 0 46px rgba(110, 165, 255, .45);
+  animation: ob-blink 1.5s ease-in-out infinite;
+}
+@keyframes ob-blink {
+  0%, 100% { opacity: .75; }
+  50% { opacity: 1; }
+}
