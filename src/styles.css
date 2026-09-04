@@ -528,6 +528,7 @@ body.launcher-open .start-page { filter: blur(9px); opacity: .26; transform: sca
   inset: 0;
   z-index: 200;
   font-family: -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  pointer-events: none;
 }
 .onboarding-mask {
   position: absolute;
@@ -535,6 +536,7 @@ body.launcher-open .start-page { filter: blur(9px); opacity: .26; transform: sca
   width: 100%;
   height: 100%;
   animation: ob-fade .3s ease;
+  pointer-events: none;
 }
 @keyframes ob-fade { from { opacity: 0 } to { opacity: 1 } }
 
@@ -563,6 +565,7 @@ body.launcher-open .start-page { filter: blur(9px); opacity: .26; transform: sca
   background: rgba(16,22,38,.62);
   backdrop-filter: blur(10px);
   border: 1px solid rgba(255,255,255,.14);
+  pointer-events: auto;
 }
 .onboarding-dots span {
   width: 7px; height: 7px;
@@ -590,6 +593,7 @@ body.launcher-open .start-page { filter: blur(9px); opacity: .26; transform: sca
   backdrop-filter: blur(22px) saturate(1.3);
   color: #eef2fb;
   animation: ob-rise .38s var(--ease, cubic-bezier(.22,1,.36,1));
+  pointer-events: auto;
 }
 @keyframes ob-rise { from { opacity: 0; transform: translate(-50%, 16px) } to { opacity: 1; transform: translate(-50%, 0) } }
 
@@ -604,7 +608,7 @@ body.launcher-open .start-page { filter: blur(9px); opacity: .26; transform: sca
   gap: 10px;
   margin-top: 18px;
 }
-.onboarding-skip {
+.onboarding-skip, .onboarding-back {
   border: 0;
   background: transparent;
   color: rgba(238,242,251,.55);
@@ -613,7 +617,7 @@ body.launcher-open .start-page { filter: blur(9px); opacity: .26; transform: sca
   cursor: pointer;
   border-radius: 10px;
 }
-.onboarding-skip:hover { color: #fff; background: rgba(255,255,255,.08); }
+.onboarding-skip:hover, .onboarding-back:hover { color: #fff; background: rgba(255,255,255,.08); }
 .onboarding-next {
   border: 0;
   border-radius: 12px;
@@ -631,23 +635,31 @@ body.launcher-open .start-page { filter: blur(9px); opacity: .26; transform: sca
   .onboarding-highlight, .onboarding-card { animation: none; }
 }
 
-/* 步骤3：整体放行点击（穿透到 start-page），气泡与进度点单独可点 */
-.onboarding.click-through { pointer-events: none; }
-.onboarding.click-through .onboarding-card,
-.onboarding.click-through .onboarding-dots { pointer-events: auto; }
+/* 说明步骤阻止页面误操作；交互步骤则默认穿透到真实控件。 */
+.onboarding-guard { position: fixed; inset: 0; pointer-events: auto; }
+
+/* 时钟步骤只放行高亮窗口，避免误点页面空白提前打开抽屉。 */
+.onboarding-blockers { position: fixed; inset: 0; pointer-events: none; }
+.onboarding-blockers span { position: fixed; display: block; pointer-events: auto; }
 
 /* 空白处闪光点 */
 .onboarding-dot {
   position: fixed;
   transform: translate(-50%, -50%);
   width: 44px; height: 44px;
-  pointer-events: none;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  pointer-events: auto;
 }
+.onboarding-dot:focus-visible { outline: 2px solid #fff; outline-offset: 9px; border-radius: 50%; }
 .onboarding-dot-ring {
   position: absolute; inset: 0;
   border-radius: 50%;
   border: 2px solid rgba(130, 180, 255, .9);
   animation: ob-ring 1.5s cubic-bezier(.2, .6, .4, 1) infinite;
+  pointer-events: none;
 }
 .onboarding-dot-ring::after {
   content: "";
@@ -666,8 +678,15 @@ body.launcher-open .start-page { filter: blur(9px); opacity: .26; transform: sca
   background: rgba(140, 190, 255, .95);
   box-shadow: 0 0 18px rgba(120, 175, 255, .9), 0 0 46px rgba(110, 165, 255, .45);
   animation: ob-blink 1.5s ease-in-out infinite;
+  pointer-events: none;
 }
 @keyframes ob-blink {
   0%, 100% { opacity: .75; }
   50% { opacity: 1; }
+}
+
+@media (max-height: 620px) {
+  .onboarding-card { bottom: 14px; padding: 16px 18px 14px; }
+  .onboarding-card p { line-height: 1.5; }
+  .onboarding-actions { margin-top: 12px; }
 }

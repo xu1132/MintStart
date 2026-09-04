@@ -321,7 +321,7 @@ function AppFormModal({ item, onClose, onSave, onResolve }) {
   )
 }
 
-export function Launchpad({ open, items, user, syncStatus, onClose, onMerge, onRenameFolder, onDissolveFolder, onAddApp, onEditApp, onDeleteApp, onLogin, onRegister, onSettings, onAdmin, onLogout }) {
+export function Launchpad({ open, items, user, syncStatus, onClose, onMerge, onRenameFolder, onDissolveFolder, onAddApp, onEditApp, onDeleteApp, onLogin, onRegister, onSettings, onAdmin, onLogout, onAccountMenuOpenChange }) {
   const [folderId, setFolderId] = useState(null)
   const [addOpen, setAddOpen] = useState(false)
   const [editingAppId, setEditingAppId] = useState(null)
@@ -347,6 +347,11 @@ export function Launchpad({ open, items, user, syncStatus, onClose, onMerge, onR
   const activeItem = items.find((item) => item.id === activeId)
   const openFolder = items.find((item) => item.id === folderId && item.type === 'folder')
   const editingApp = items.find((item) => item.id === editingAppId && item.type !== 'folder')
+
+  useEffect(() => {
+    onAccountMenuOpenChange?.(open && accountMenuOpen)
+    return () => onAccountMenuOpenChange?.(false)
+  }, [accountMenuOpen, onAccountMenuOpenChange, open])
 
   const pageCount = useMemo(() => Math.max(1, Math.ceil((items.length + 1) / capacity)), [capacity, items.length])
   const pageCountRef = useRef(pageCount)

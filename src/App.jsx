@@ -26,6 +26,7 @@ export default function App() {
 function MainApp() {
   const wallpaper = useBingWallpaper()
   const [launchpadOpen, setLaunchpadOpen] = useState(false)
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false)
   const [searchActive, setSearchActive] = useState(false)
   const [searchResetVersion, setSearchResetVersion] = useState(0)
   const [items, setItems] = useState(() => loadApps(DESKTOP_STORAGE))
@@ -178,7 +179,13 @@ function MainApp() {
 
       <OnboardingGuide
         launchpadOpen={launchpadOpen}
-        onOpenLaunchpad={() => setLaunchpadOpen(true)}
+        searchActive={searchActive}
+        accountMenuOpen={accountMenuOpen}
+        onOpenLaunchpad={() => {
+          setSearchResetVersion((version) => version + 1)
+          setLaunchpadOpen(true)
+        }}
+        onCloseLaunchpad={() => setLaunchpadOpen(false)}
       />
 
       <Launchpad
@@ -198,6 +205,7 @@ function MainApp() {
         onSettings={() => setSettingsOpen(true)}
         onAdmin={() => setAdminOpen(true)}
         onLogout={handleLogout}
+        onAccountMenuOpenChange={setAccountMenuOpen}
       />
       <AuthModal
         open={Boolean(authModal)}

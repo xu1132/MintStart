@@ -1,240 +1,304 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 const STORAGE_KEY = 'mintstart-onboarding-done'
-// 步骤 2 时钟展开后，停留多少毫秒自动进入下一步
-const CLOCK_HOVER_ADVANCE_MS = 2400
-// 步骤 3 点击空白后，抽屉动画完成再进入下一步
-const LAUNCHPAD_ADVANCE_DELAY = 650
+const CLOCK_OPEN_ADVANCE_MS = 1100
+const LAUNCHPAD_ADVANCE_DELAY = 420
+
+function onboardingCompleted() {
+  try { return Boolean(localStorage.getItem(STORAGE_KEY)) } catch { return false }
+}
 
 /**
- * 新手引导：首次访问自动弹出，操作式引导。
- * 每步引导用户真实操作（hover 时钟 / 点击空白），完成动作后自动或手动进入下一步。
+ * 首次访问的新手引导。真实交互由页面组件上报，不再通过轮询 DOM 猜测状态。
  */
-export function OnboardingGuide({ launchpadOpen, onOpenLaunchpad }) {
+export function OnboardingGuide({
+  launchpadOpen,
+  searchActive,
+  accountMenuOpen,
+  onOpenLaunchpad,
+  onCloseLaunchpad,
+}) {
   const [visible, setVisible] = useState(false)
   const [stepIndex, setStepIndex] = useState(0)
   const [anchor, setAnchor] = useState(null)
-  const [clockHovered, setClockHovered] = useState(false) // 步骤2: 时钟已展开
-  const [dotSpot, setDotSpot] = useState(null) // 步骤3: 闪光点位置
-  const advanceTimer = useRef(0)
-  const launcherHandledRef = useRef(false)
+  const [dotSpot, setDotSpot] = useState(null)
+  const [accountVisited, setAccountVisited] = useState(false)
+  const cardRef = useRef(null)
 
   const steps = useMemo(() => [
     {
       title: '欢迎使用薄荷起始页',
-      body: '一个属于你的轻量新标签页。接下来我会带你亲手试一遍核心操作，大约 30 秒。',
+      body: '一个属于你的轻量新标签页。接下来亲手试一遍核心操作，大约 30 秒。',
       selector: '.clock',
-      mode: 'info',
+      mode: 'welcome',
     },
     {
-      title: '把鼠标移到时钟上',
-      body: '不用点击——只要把鼠标移过去，搜索框就会展开。试试看，展开后会自动进入下一步。',
+      title: '唤出搜索框',
+      body: '把鼠标移到时钟上；在触屏设备上，轻点时钟也可以。搜索框展开后会自动继续。',
       selector: '.clock-shell',
-      mode: 'hover-clock',
+      mode: 'clock',
       pad: 34,
     },
     {
-      title: '点击页面空白处',
-      body: '注意看屏幕中间那个闪光点，点击它——那是打开你快捷方式抽屉的入口。',
-      selector: '.start-page',
-      mode: 'click-blank',
-      target: 'dot',
+      title: '打开快捷方式',
+      body: '点击屏幕中间的闪光点，打开你的快捷方式抽屉。',
+      mode: 'launchpad-trigger',
     },
     {
-      title: '你的快捷方式抽屉',
-      body: '这里展示你的常用站点。点击“＋”可以添加网址，拖拽图标可排序、拖到一起可建文件夹。',
+      title: '使用快捷方式抽屉',
+      body: '这里的控件都可以直接操作：点“＋”添加网址，拖动图标可以整理或合并成文件夹。试用后继续。',
       selector: '.launcher-pages',
-      mode: 'launchpad-apps',
+      mode: 'launchpad',
       pad: 12,
     },
     {
       title: '账户与云端同步',
-      body: '右上角账户菜单可注册登录，登录后快捷方式自动同步到云端，任何设备打开都一致。',
+      body: '点击右上角的账户入口，查看登录与同步选项。打开菜单后，引导会自动完成。',
       selector: '.account-area',
-      mode: 'info',
+      mode: 'account',
+      pad: 10,
     },
   ], [])
 
   const step = steps[stepIndex]
   const isLast = stepIndex === steps.length - 1
+  const letsPageInteract = step?.mode === 'clock' || step?.mode === 'launchpad' || step?.mode === 'account'
+  const needsTargetHole = step?.mode === 'clock' && Boolean(anchor)
+  const blocksWholePage = step?.mode === 'welcome'
+    || step?.mode === 'launchpad-trigger'
+    || (step?.mode === 'clock' && !anchor)
 
-  // ---- 完成态：一次性记录 ----
   const finish = useCallback(() => {
     setVisible(false)
-    try { localStorage.setItem(STORAGE_KEY, '1') } catch { /* noop */ }
+    try { localStorage.setItem(STORAGE_KEY, '1') } catch { /* 浏览器禁用存储时仍允许正常使用 */ }
   }, [])
 
-  // ---- 推进：下一步 / 跳过 / 完成 ----
   const advance = useCallback(() => {
-    if (stepIndex >= steps.length - 1) { finish(); return }
-    setStepIndex((index) => index + 1)
-    setClockHovered(false)
-    setAnchor(null)
-    launcherHandledRef.current = false
+    if (stepIndex >= steps.length - 1) {
+      finish()
+      return
+    }
+    setStepIndex((current) => current + 1)
   }, [finish, stepIndex, steps.length])
 
   const goNext = useCallback(() => {
-    const current = steps[stepIndex]
-    if (!current) return
-    // 步骤 3：点击“下一步”等价于替用户打开抽屉
-    if (current.mode === 'click-blank') onOpenLaunchpad?.()
+    if (!step) return
+    if (step.mode === 'launchpad-trigger') {
+      onOpenLaunchpad?.()
+      return
+    }
+    // 用户可能在抽屉步骤中按 Esc 关掉了抽屉；先恢复现场，不跳到一个没有目标的步骤。
+    if ((step.mode === 'launchpad' || step.mode === 'account') && !launchpadOpen) {
+      onOpenLaunchpad?.()
+      return
+    }
     advance()
-  }, [advance, onOpenLaunchpad, stepIndex, steps])
+  }, [advance, launchpadOpen, onOpenLaunchpad, step])
 
-  // ---- 首次访问自动弹 ----
+  const goBack = useCallback(() => {
+    if (stepIndex === 0) return
+    if (stepIndex === 3) onCloseLaunchpad?.()
+    setStepIndex((current) => Math.max(0, current - 1))
+  }, [onCloseLaunchpad, stepIndex])
+
   useEffect(() => {
-    if (localStorage.getItem(STORAGE_KEY)) return
-    const timer = window.setTimeout(() => setVisible(true), 700)
+    if (onboardingCompleted()) return undefined
+    const timer = window.setTimeout(() => setVisible(true), 650)
     return () => window.clearTimeout(timer)
   }, [])
 
-  // ---- 计算高亮框 / 闪光点位置 ----
+  // 搜索框的真实 open 状态驱动第二步，不依赖 className 轮询。
   useEffect(() => {
-    if (!visible || !step) return
-    let cancelled = false
+    if (!visible || step?.mode !== 'clock' || !searchActive) return undefined
+    const timer = window.setTimeout(advance, CLOCK_OPEN_ADVANCE_MS)
+    return () => window.clearTimeout(timer)
+  }, [advance, searchActive, step, visible])
+
+  // 抽屉真实打开后再推进，延时只用于等待入场动画结束。
+  useEffect(() => {
+    if (!visible || step?.mode !== 'launchpad-trigger' || !launchpadOpen) return undefined
+    const timer = window.setTimeout(advance, LAUNCHPAD_ADVANCE_DELAY)
+    return () => window.clearTimeout(timer)
+  }, [advance, launchpadOpen, step, visible])
+
+  useEffect(() => {
+    if (visible && step?.mode === 'account' && accountMenuOpen) setAccountVisited(true)
+  }, [accountMenuOpen, step, visible])
+
+  useEffect(() => {
+    if (!visible || step?.mode !== 'account' || !accountVisited) return undefined
+    const timer = window.setTimeout(finish, 900)
+    return () => window.clearTimeout(timer)
+  }, [accountVisited, finish, step, visible])
+
+  useEffect(() => {
+    if (step?.mode !== 'account') setAccountVisited(false)
+  }, [step])
+
+  // 目标在动画、缩放和窗口变化后都会重新定位。
+  useEffect(() => {
+    if (!visible || !step) return undefined
+    let frame = 0
+    let observer
 
     const locate = () => {
-      if (step.mode === 'click-blank') {
-        // 空白闪光点：放在时钟与底部气泡之间的空白区（避开卡片与时钟）
-        const clockEl = document.querySelector('.clock-shell')
-        const cardEl = document.querySelector('.onboarding-card')
-        const vw = window.innerWidth
-        const clockBottom = clockEl ? clockEl.getBoundingClientRect().bottom : 180
-        const cardTop = cardEl ? cardEl.getBoundingClientRect().top : window.innerHeight - 140
-        const y = Math.max(clockBottom + 50, Math.round((clockBottom + cardTop) / 2))
+      if (step.mode === 'launchpad-trigger') {
+        const clockRect = document.querySelector('.clock-shell')?.getBoundingClientRect()
+        const cardRect = cardRef.current?.getBoundingClientRect()
+        const top = (clockRect?.bottom || 180) + 54
+        const bottom = (cardRect?.top || window.innerHeight - 150) - 54
         setAnchor(null)
-        setDotSpot({ x: Math.round(vw / 2), y: Math.min(y, cardTop - 60) })
+        setDotSpot({
+          x: Math.round(window.innerWidth / 2),
+          y: Math.round(Math.max(top, Math.min((top + bottom) / 2, bottom))),
+        })
         return
       }
+
       setDotSpot(null)
-      if (step.mode === 'launchpad-apps' && !launchpadOpen) return
-      const el = document.querySelector(step.selector)
-      if (!el) { setAnchor(null); return }
-      const rect = el.getBoundingClientRect()
-      const pad = step.pad || 8
-      setAnchor({
-        top: rect.top - pad,
-        left: rect.left - pad,
-        width: rect.width + pad * 2,
-        height: rect.height + pad * 2,
-      })
-    }
-
-    const delay = step.mode === 'launchpad-apps' ? 500 : step.mode === 'click-blank' ? 0 : 150
-    const timer = window.setTimeout(() => { if (!cancelled) locate() }, delay)
-    return () => { cancelled = true; window.clearTimeout(timer) }
-  }, [visible, stepIndex, launchpadOpen, step])
-
-  // ---- 步骤2：轮询时钟是否已展开（hover 生效）→ 展开后停留自动下一步 ----
-  useEffect(() => {
-    if (!visible || step?.mode !== 'hover-clock') return undefined
-    let expandedAt = 0
-    const poll = window.setInterval(() => {
-      const shell = document.querySelector('.clock-shell')
-      const expanded = Boolean(shell?.classList.contains('active'))
-      if (expanded) {
-        setClockHovered(true)
-        if (!expandedAt) expandedAt = Date.now()
-        // 展开后停留 CLOCK_HOVER_ADVANCE_MS 自动进入下一步
-        if (Date.now() - expandedAt >= CLOCK_HOVER_ADVANCE_MS) advance()
-      } else {
-        expandedAt = 0
-        setClockHovered(false)
+      if ((step.mode === 'launchpad' || step.mode === 'account') && !launchpadOpen) {
+        setAnchor(null)
+        return
       }
-    }, 250)
-    return () => { window.clearInterval(poll); setClockHovered(false) }
-  }, [visible, step, advance])
-
-  // ---- 步骤3：监听抽屉打开 → 自动进入下一步 ----
-  useEffect(() => {
-    if (!visible || step?.mode !== 'click-blank') return undefined
-    if (launchpadOpen && !launcherHandledRef.current) {
-      launcherHandledRef.current = true
-      const timer = window.setTimeout(advance, LAUNCHPAD_ADVANCE_DELAY)
-      return () => window.clearTimeout(timer)
+      const element = step.selector ? document.querySelector(step.selector) : null
+      if (!element) {
+        setAnchor(null)
+        return
+      }
+      const rect = element.getBoundingClientRect()
+      const pad = step.pad || 8
+      const left = Math.max(0, rect.left - pad)
+      const top = Math.max(0, rect.top - pad)
+      const right = Math.min(window.innerWidth, rect.right + pad)
+      const bottom = Math.min(window.innerHeight, rect.bottom + pad)
+      setAnchor({ top, left, width: right - left, height: bottom - top })
     }
-    return undefined
-  }, [visible, step, launchpadOpen, advance])
 
-  // ---- 清理 ----
-  useEffect(() => () => window.clearTimeout(advanceTimer.current), [])
+    const scheduleLocate = () => {
+      window.cancelAnimationFrame(frame)
+      frame = window.requestAnimationFrame(locate)
+    }
+
+    const delay = step.mode === 'launchpad' || step.mode === 'account' ? 320 : 0
+    const timer = window.setTimeout(() => {
+      locate()
+      const element = step.selector ? document.querySelector(step.selector) : null
+      if (element && 'ResizeObserver' in window) {
+        observer = new ResizeObserver(scheduleLocate)
+        observer.observe(element)
+      }
+    }, delay)
+    window.addEventListener('resize', scheduleLocate)
+    window.addEventListener('orientationchange', scheduleLocate)
+    return () => {
+      window.clearTimeout(timer)
+      window.cancelAnimationFrame(frame)
+      observer?.disconnect()
+      window.removeEventListener('resize', scheduleLocate)
+      window.removeEventListener('orientationchange', scheduleLocate)
+    }
+  }, [launchpadOpen, step, visible])
+
+  useEffect(() => {
+    if (!visible) return undefined
+    const frame = window.requestAnimationFrame(() => {
+      cardRef.current?.querySelector('.onboarding-next')?.focus({ preventScroll: true })
+    })
+    const onKeyDown = (event) => {
+      if (event.key !== 'Escape') return
+      event.preventDefault()
+      event.stopPropagation()
+      finish()
+    }
+    document.addEventListener('keydown', onKeyDown, true)
+    return () => {
+      window.cancelAnimationFrame(frame)
+      document.removeEventListener('keydown', onKeyDown, true)
+    }
+  }, [finish, stepIndex, visible])
 
   if (!visible || !step) return null
 
-  const hintButton = step.mode === 'hover-clock'
-    ? (clockHovered ? '看到了吗？即将进入下一步…' : '移过去看看，或点这里继续')
-    : step.mode === 'click-blank'
-      ? '我找不到闪光点，帮我打开'
-      : (isLast ? '完成，开始使用' : '下一步')
-
-  // 步骤 3：遮罩放行空白点击（把中央区域挖掉，让事件落到 start-page）
-  const clickThrough = step.mode === 'click-blank'
+  const primaryLabel = step.mode === 'clock'
+    ? (searchActive ? '搜索框已展开，即将继续…' : '也可以点这里继续')
+    : step.mode === 'launchpad-trigger'
+      ? '帮我打开'
+      : !launchpadOpen && (step.mode === 'launchpad' || step.mode === 'account')
+        ? '重新打开抽屉'
+        : isLast ? '完成，开始使用' : '下一步'
 
   return (
-    <div className={`onboarding${clickThrough ? ' click-through' : ''}`} role="dialog" aria-modal="true" aria-label={step.title} data-mode={step.mode}>
-      {!clickThrough && (
-        <svg className="onboarding-mask" aria-hidden="true">
-          <defs>
-            <mask id="ob-mask">
-              <rect width="100%" height="100%" fill="white" />
-              {anchor && (
-                <rect
-                  x={anchor.left} y={anchor.top}
-                  width={anchor.width} height={anchor.height}
-                  rx={Math.min(22, anchor.height / 3)}
-                  fill="black"
-                />
-              )}
-            </mask>
-          </defs>
-          <rect width="100%" height="100%" fill="rgba(5,8,16,0.66)" mask="url(#ob-mask)" pointerEvents="none" />
-        </svg>
+    <div
+      className={`onboarding${letsPageInteract ? ' page-interactive' : ''}`}
+      role="dialog"
+      aria-modal={!letsPageInteract}
+      aria-labelledby="onboarding-title"
+      data-mode={step.mode}
+    >
+      <svg className="onboarding-mask" aria-hidden="true">
+        <defs>
+          <mask id="ob-mask">
+            <rect width="100%" height="100%" fill="white" />
+            {anchor && (
+              <rect
+                x={anchor.left}
+                y={anchor.top}
+                width={anchor.width}
+                height={anchor.height}
+                rx={Math.min(22, anchor.height / 3)}
+                fill="black"
+              />
+            )}
+          </mask>
+        </defs>
+        <rect width="100%" height="100%" fill="rgba(5,8,16,0.66)" mask="url(#ob-mask)" />
+      </svg>
+
+      {blocksWholePage && <div className="onboarding-guard" aria-hidden="true" />}
+
+      {needsTargetHole && (
+        <div className="onboarding-blockers" aria-hidden="true">
+          <span style={{ inset: '0 0 auto 0', height: anchor.top }} />
+          <span style={{ inset: `${anchor.top + anchor.height}px 0 0 0` }} />
+          <span style={{ top: anchor.top, left: 0, width: anchor.left, height: anchor.height }} />
+          <span style={{ top: anchor.top, left: anchor.left + anchor.width, right: 0, height: anchor.height }} />
+        </div>
       )}
 
-      {/* 步骤3：遮罩本身不拦截事件，中央闪光点引导点击，事件穿透到 start-page */}
-      {clickThrough && (
-        <>
-          <svg className="onboarding-mask" aria-hidden="true">
-            <rect width="100%" height="100%" fill="rgba(5,8,16,0.4)" />
-          </svg>
-          {dotSpot && (
-            <div
-              className="onboarding-dot"
-              style={{ left: dotSpot.x, top: dotSpot.y }}
-              aria-hidden="true"
-            >
-              <span className="onboarding-dot-ring" />
-              <span className="onboarding-dot-core" />
-            </div>
-          )}
-        </>
+      {dotSpot && (
+        <button
+          type="button"
+          className="onboarding-dot"
+          style={{ left: dotSpot.x, top: dotSpot.y }}
+          aria-label="打开快捷方式抽屉"
+          onClick={onOpenLaunchpad}
+        >
+          <span className="onboarding-dot-ring" />
+          <span className="onboarding-dot-core" />
+        </button>
       )}
 
-      {/* 高亮框 */}
-      {anchor && !clickThrough && (
+      {anchor && (
         <div
           className="onboarding-highlight"
           style={{ top: anchor.top - 3, left: anchor.left - 3, width: anchor.width + 6, height: anchor.height + 6 }}
         />
       )}
 
-      {/* 进度点 */}
-      <div className="onboarding-dots">
+      <div className="onboarding-dots" aria-label={`引导进度：第 ${stepIndex + 1} 步，共 ${steps.length} 步`}>
         {steps.map((item, index) => (
           <span key={item.title} className={index === stepIndex ? 'on' : ''} />
         ))}
       </div>
 
-      {/* 气泡 */}
-      <div className="onboarding-card">
+      <div className="onboarding-card" ref={cardRef}>
         <span className="launcher-kicker">MINTSTART GUIDE · {stepIndex + 1}/{steps.length}</span>
-        <h2>{step.title}</h2>
+        <h2 id="onboarding-title">{step.title}</h2>
         <p>{step.body}</p>
         <div className="onboarding-actions">
           <button type="button" className="onboarding-skip" onClick={finish}>跳过</button>
-          <button type="button" className="onboarding-next" onClick={goNext}>
-            {hintButton}
-          </button>
+          {stepIndex > 0 && <button type="button" className="onboarding-back" onClick={goBack}>上一步</button>}
+          <button type="button" className="onboarding-next" onClick={goNext}>{primaryLabel}</button>
         </div>
       </div>
     </div>
