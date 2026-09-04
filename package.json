@@ -1,8 +1,10 @@
 {
-  "name": "leave-space-start-page",
+  "name": "mintstart",
   "private": true,
   "version": "1.0.0",
   "type": "module",
+  "license": "MIT",
+  "description": "薄荷起始页 - 可定制的新标签页，支持账户与云端同步",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
