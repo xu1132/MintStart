@@ -362,17 +362,6 @@ export function Launchpad({ open, items, user, syncStatus, onClose, onMerge, onR
     return result.length ? result : [[]]
   }, [capacity, items])
 
-  useEffect(() => {
-    if (!accountMenuOpen) return undefined
-
-    const closeOnOutsidePointerDown = (event) => {
-      if (!accountAreaRef.current?.contains(event.target)) setAccountMenuOpen(false)
-    }
-
-    document.addEventListener('pointerdown', closeOnOutsidePointerDown)
-    return () => document.removeEventListener('pointerdown', closeOnOutsidePointerDown)
-  }, [accountMenuOpen])
-
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 7 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 180, tolerance: 8 } }),
@@ -621,6 +610,16 @@ export function Launchpad({ open, items, user, syncStatus, onClose, onMerge, onR
   }, [])
 
   const handlePointerDown = (event) => {
+    // 账户菜单打开时的特殊处理：
+    // - 点击账户区域外（工具栏、空白、图标等）→ 只关闭菜单，不进入翻页/点击关闭逻辑，
+    //   因此本次 pointerup 不会触发 onClose()，app 页面保持打开。
+    // - 点击账户区域内 → 走按钮/菜单项自身的 onClick（此处不拦截）。
+    if (accountMenuOpen) {
+      if (!accountAreaRef.current?.contains(event.target)) {
+        setAccountMenuOpen(false)
+        return
+      }
+    }
     if (event.target.closest('.folder-backdrop, .folder-modal, .add-app-modal, .app-context-menu, .launcher-dots, .launcher-toolbar')) return
     const beginPan = (fromTile) => {
       cancelTrackFrame()
@@ -726,7 +725,7 @@ export function Launchpad({ open, items, user, syncStatus, onClose, onMerge, onR
       settlePage(pan.base + step, velocity)
       return
     }
-    if (pan.mode === null && !pan.fromTile) onClose() // 空白处轻点关闭
+    if (pan.mode === null && !pan.fromTile) onClose() // 空白处轻点关闭（账户菜单打开时已在 handlePointerDown 拦截）
     panRef.current = null
   }
 
