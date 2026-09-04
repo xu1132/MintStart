@@ -4,6 +4,7 @@ import { Launchpad } from './components/Launchpad'
 import { AuthModal } from './components/AuthModal'
 import { SettingsModal } from './components/SettingsModal'
 import { AdminDashboard } from './components/AdminDashboard'
+import { AdminPage } from './components/AdminPage'
 import { loadApps } from './data/apps'
 import { useBingWallpaper } from './hooks/useBingWallpaper'
 import { authApi, desktopApi, getAuthToken, saveAuthToken } from './services/api'
@@ -11,7 +12,17 @@ import { dissolveFolder, mergeApps, removeDesktopApp, renameFolder, replaceDeskt
 
 const DESKTOP_STORAGE = 'leave-space-desktop-apps'
 
+// admin.mintstart.cn → 独立运营后台；其余 host → 薄荷起始页
+function isAdminHost() {
+  return typeof window !== 'undefined' && window.location.hostname === 'admin.mintstart.cn'
+}
+
 export default function App() {
+  // admin.mintstart.cn → 独立运营后台；其余 host → 薄荷起始页
+  return isAdminHost() ? <AdminPage /> : <MainApp />
+}
+
+function MainApp() {
   const wallpaper = useBingWallpaper()
   const [launchpadOpen, setLaunchpadOpen] = useState(false)
   const [searchActive, setSearchActive] = useState(false)

@@ -468,3 +468,56 @@ body.launcher-open .start-page { filter: blur(9px); opacity: .26; transform: sca
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; }
 }
+
+/* ===== 运营后台独立页 (admin.mintstart.cn) ===== */
+.admin-page {
+  min-height: 100svh;
+  padding: 34px clamp(18px, 5vw, 56px);
+  background: radial-gradient(1200px 700px at 75% -10%, #1b2740 0%, #0c1220 55%, #070b14 100%);
+  color: #eef2fb;
+  font-family: -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  box-sizing: border-box;
+}
+.admin-page * { box-sizing: border-box; }
+.admin-page h1 { margin: 4px 0 0; font-size: 26px; font-weight: 500; letter-spacing: .2px; }
+.admin-page .launcher-kicker { color: #8fb4ff; }
+
+.admin-page-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  max-width: 1080px; margin: 0 auto 8px;
+}
+.admin-page .admin-backdrop {
+  position: static; display: block; padding: 0; background: transparent;
+  backdrop-filter: none; overflow: visible;
+}
+.admin-page .admin-panel {
+  width: min(1080px, 100%); max-height: none; margin: 0 auto; padding: 0;
+  background: transparent; border: 0; border-radius: 0;
+  box-shadow: none; backdrop-filter: none; animation: none;
+}
+.admin-page .admin-head { display: none; }
+.admin-page .launcher-close { display: none; }
+
+.admin-login-card {
+  max-width: 380px; margin: 12svh auto 0;
+  border: 1px solid rgba(255,255,255,.16); border-radius: 20px;
+  padding: 30px 26px 26px; background: rgba(20,28,46,.82);
+  box-shadow: 0 24px 70px rgba(3,6,14,.5), inset 0 1px rgba(255,255,255,.1);
+}
+.admin-login-card h1 { font-size: 22px; }
+.admin-login-card .account-form { margin-top: 22px; }
+.admin-login-card .account-form label span { color: rgba(255,255,255,.66); font-size: 12px; }
+.admin-login-card .account-form input {
+  width: 100%; margin-top: 7px; padding: 11px 13px;
+  background: rgba(10,15,28,.72); color: #f2f5fc;
+  border: 1px solid rgba(255,255,255,.17); border-radius: 11px; outline: none; font-size: 14px;
+}
+.admin-login-card .account-form input:focus { border-color: #6d95f7; }
+.admin-login-card .account-actions { margin-top: 20px; }
+.admin-login-card .account-actions button {
+  width: 100%; padding: 11px; border: 0; border-radius: 11px;
+  background: #3f6ee0; color: #fff; font-size: 14px; cursor: pointer;
+}
+.admin-login-card .account-actions button:disabled { opacity: .6; cursor: default; }
+.admin-page .account-status { color: rgba(255,255,255,.5); font-size: 12px; display: block; margin-bottom: 12px; }
+.admin-page .account-status.error { color: #ffb4ab; }
