@@ -687,7 +687,7 @@ export function Launchpad({ open, items, user, syncStatus, onClose, onMerge, onR
         return
       }
     }
-    if (event.target.closest('.folder-backdrop, .folder-modal, .add-app-modal, .app-context-menu, .launcher-dots, .launcher-toolbar')) return
+    if (event.target.closest('.folder-backdrop, .folder-modal, .add-app-modal, .app-context-menu, .launcher-dots, .account-area')) return
     const beginPan = (fromTile) => {
       cancelTrackFrame()
       if (wheelGesture.current?.timer) window.clearTimeout(wheelGesture.current.timer)
@@ -974,7 +974,7 @@ export function Launchpad({ open, items, user, syncStatus, onClose, onMerge, onR
       onPointerCancel={() => resetPan()}
     >
       <div className="launcher-stage">
-        <div className="launcher-toolbar" onPointerDown={(event) => event.stopPropagation()}>
+        <div className="launcher-toolbar">
           <span className="launcher-toolbar-title">我的 App</span>
           <div className="account-area" ref={accountAreaRef}>
             <button className="account-toggle" type="button" aria-expanded={accountMenuOpen} onClick={() => setAccountMenuOpen((value) => !value)}>

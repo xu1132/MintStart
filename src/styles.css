@@ -197,7 +197,7 @@ body.launcher-open .start-page { filter: blur(9px); opacity: .26; transform: sca
 }
 .launcher.show .launcher-stage { transform: scale(1); filter: none; }
 .launcher-toolbar { position: relative; z-index: 5; display: flex; align-items: center; justify-content: space-between; min-height: 42px; padding: 0 2px 7px; }
-.launcher-toolbar-title { color: rgba(255,255,255,.7); font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.launcher-toolbar-title { color: rgba(255,255,255,.7); font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; user-select: none; }
 .account-area { position: relative; }
 .account-toggle { height: 35px; display: flex; align-items: center; gap: 8px; border: 1px solid rgba(255,255,255,.18); border-radius: 999px; padding: 0 11px 0 5px; color: rgba(255,255,255,.9); background: rgba(20,28,43,.38); font-size: 11px; cursor: pointer; backdrop-filter: blur(15px); }
 .account-toggle:hover, .account-toggle[aria-expanded="true"] { border-color: rgba(255,255,255,.38); background: rgba(255,255,255,.14); }
