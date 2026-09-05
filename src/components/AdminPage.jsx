@@ -19,6 +19,12 @@ export function AdminPage() {
   const [busy, setBusy] = useState(false)
 
   useEffect(() => {
+    document.title = '薄荷起始页运营后台'
+    const robots = document.querySelector('meta[name="robots"]')
+    if (robots) robots.setAttribute('content', 'noindex, nofollow, noarchive')
+  }, [])
+
+  useEffect(() => {
     if (!getAuthToken()) {
       setAuthState('needLogin')
       setChecking(false)

@@ -1,0 +1,82 @@
+# 薄荷起始页 (MintStart) robots.txt
+# 用途:对搜索引擎与生成式 AI 引擎开放抓取(grounding / 引用检索),拒绝纯模型训练采集。
+# 说明:Cloudflare Pages 默认注入的托管 robots.txt 会 Disallow 主流 AI 爬虫;
+# 站点自带本文件后将以此为准,不再注入托管版本。
+
+User-agent: *
+Allow: /
+Disallow: /admin
+Crawl-delay: 3
+
+# --- 国内搜索引擎 / AI 生态 ---
+# 百度(百度搜索、文心检索引用源)
+User-agent: Baiduspider
+Allow: /
+
+# 字节跳动 / 豆包(豆包 AI 搜索、抖音百科引用源)
+User-agent: Bytespider
+Allow: /
+
+# 搜狗(腾讯搜索生态 / 微信搜一搜引用源)
+User-agent: Sogou web spider
+Allow: /
+
+# 360 搜索
+User-agent: 360Spider
+Allow: /
+
+# 神马 / UC
+User-agent: YisouSpider
+Allow: /
+
+# --- 国际主流搜索引擎与 AI 爬虫(允许抓取用于检索引用;训练请遵守下方 Content-Signal)---
+User-agent: Googlebot
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+User-agent: GPTBot
+Allow: /
+
+User-agent: OAI-SearchBot
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: CCBot
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Applebot
+Allow: /
+
+User-agent: Applebot-Extended
+Allow: /
+
+User-agent: meta-externalagent
+Allow: /
+
+User-agent: Amazonbot
+Allow: /
+
+User-agent: DuckDuckBot
+Allow: /
+
+User-agent: Yandex
+Allow: /
+
+# --- 内容信号(Content-Signals 标准,详见 https://content-signals.org)---
+# search=yes     允许用于建立搜索索引与摘要
+# ai-input=yes   允许被生成式 AI 实时检索引用(RAG / grounding)
+# ai-train=no    禁止用于训练或微调 AI 模型
+# use=reference  引用时需标注来源
+Content-Signal: search=yes, ai-input=yes, ai-train=no, use=reference
+
+Sitemap: https://mintstart.cn/sitemap.xml
