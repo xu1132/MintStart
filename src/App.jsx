@@ -178,6 +178,10 @@ function MainApp() {
     setSettingsOpen(false)
   }, [])
 
+  const openHomepageGuide = useCallback(() => {
+    window.open('/sethome/index.html', '_blank', 'noopener')
+  }, [])
+
   return (
     <>
       <div
@@ -217,6 +221,7 @@ function MainApp() {
           setLaunchpadOpen(true)
         }}
         onCloseLaunchpad={() => setLaunchpadOpen(false)}
+        onOpenHomepageGuide={openHomepageGuide}
       />
 
       <Launchpad
@@ -235,6 +240,7 @@ function MainApp() {
         onLogin={() => setAuthModal('login')}
         onRegister={() => setAuthModal('register')}
         onSettings={() => setSettingsOpen(true)}
+        onOpenHomepageGuide={openHomepageGuide}
         onAdmin={() => setAdminOpen(true)}
         onLogout={handleLogout}
         onAccountMenuOpenChange={setAccountMenuOpen}

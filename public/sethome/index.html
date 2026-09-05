@@ -1,0 +1,360 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f1f5f3" />
+    <meta name="description" content="将薄荷起始页设置为 Chrome、Edge、Firefox、Safari、360、搜狗或 QQ 浏览器主页的方法。" />
+    <link rel="canonical" href="https://mintstart.cn/sethome/index.html" />
+    <link rel="icon" type="image/png" href="/mint-logo.png" />
+    <title>如何将薄荷起始页设为主页</title>
+    <style>
+      :root {
+        color-scheme: light;
+        font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+        color: #17251f;
+        background: #f2f6f4;
+        font-synthesis: none;
+      }
+
+      * { box-sizing: border-box; }
+      html { scroll-behavior: smooth; }
+      body { min-width: 320px; margin: 0; background: radial-gradient(circle at 50% -10%, #fff 0, #f3f8f5 34%, #edf3f0 100%); }
+      button, input { font: inherit; }
+      button, summary, a { -webkit-tap-highlight-color: transparent; }
+
+      .page {
+        width: min(960px, calc(100% - 40px));
+        margin: 0 auto;
+        padding: 30px 0 72px;
+      }
+
+      .topbar { display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+      .brand { display: inline-flex; align-items: center; gap: 10px; color: #183128; font-size: 15px; font-weight: 750; letter-spacing: -.01em; text-decoration: none; }
+      .brand img { width: 34px; height: 34px; border-radius: 10px; box-shadow: 0 8px 22px rgba(32, 99, 70, .16); }
+      .back-link { color: #547066; font-size: 13px; text-decoration: none; transition: color .18s ease; }
+      .back-link:hover { color: #15714d; }
+
+      .hero { max-width: 700px; margin: 72px auto 35px; text-align: center; }
+      .eyebrow { display: inline-flex; align-items: center; gap: 7px; margin-bottom: 13px; color: #20805c; font-size: 12px; font-weight: 750; letter-spacing: .12em; }
+      .eyebrow::before { width: 7px; height: 7px; border-radius: 50%; background: #31b87d; box-shadow: 0 0 0 5px rgba(49,184,125,.12); content: ""; }
+      h1 { margin: 0; color: #13251e; font-size: clamp(31px, 5vw, 48px); font-weight: 680; letter-spacing: -.055em; line-height: 1.12; }
+      .hero p { max-width: 590px; margin: 18px auto 0; color: #60736b; font-size: 15px; line-height: 1.75; }
+
+      .url-card {
+        display: grid;
+        grid-template-columns: auto 1fr auto;
+        align-items: center;
+        gap: 14px;
+        margin: 30px auto 46px;
+        border: 1px solid rgba(35, 96, 72, .13);
+        border-radius: 18px;
+        padding: 12px 12px 12px 17px;
+        background: rgba(255,255,255,.82);
+        box-shadow: 0 14px 44px rgba(27, 72, 55, .08);
+        backdrop-filter: blur(16px);
+      }
+      .url-card > span { color: #6b7e76; font-size: 12px; font-weight: 650; white-space: nowrap; }
+      .url-card input { min-width: 0; border: 0; outline: 0; color: #19382d; background: transparent; font-size: 14px; font-weight: 650; }
+      .copy-button {
+        height: 40px;
+        border: 0;
+        border-radius: 11px;
+        padding: 0 17px;
+        color: #fff;
+        background: #237b59;
+        font-size: 12px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: transform .18s ease, background .18s ease;
+      }
+      .copy-button:hover { background: #196d4c; transform: translateY(-1px); }
+
+      .section-head { display: flex; align-items: end; justify-content: space-between; gap: 20px; margin: 0 4px 15px; }
+      .section-head h2 { margin: 0; font-size: 20px; letter-spacing: -.025em; }
+      .section-head p { margin: 0; color: #7a8c84; font-size: 12px; }
+
+      .browser-list { display: grid; gap: 12px; }
+      details {
+        overflow: hidden;
+        border: 1px solid rgba(34, 79, 61, .11);
+        border-radius: 17px;
+        background: rgba(255,255,255,.86);
+        box-shadow: 0 10px 34px rgba(36, 68, 55, .045);
+      }
+      details[open] { border-color: rgba(34, 126, 88, .22); box-shadow: 0 16px 48px rgba(30, 89, 66, .08); }
+      summary {
+        min-height: 72px;
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 15px 20px;
+        cursor: pointer;
+        list-style: none;
+        user-select: none;
+      }
+      summary::-webkit-details-marker { display: none; }
+      summary strong { font-size: 14px; }
+      .recommended { display: none; border-radius: 999px; padding: 4px 8px; color: #1f7a58; background: #e3f5ec; font-size: 10px; font-weight: 700; }
+      details.detected .recommended { display: inline-flex; }
+      .chevron { width: 10px; height: 10px; margin-left: auto; border-right: 1.5px solid #8da098; border-bottom: 1.5px solid #8da098; transform: rotate(45deg) translateY(-3px); transition: transform .22s ease; }
+      details[open] .chevron { transform: rotate(225deg) translate(-2px, -2px); }
+
+      .browser-icon { width: 38px; height: 38px; flex: none; display: grid; place-items: center; border-radius: 12px; color: #fff; font-size: 11px; font-weight: 850; box-shadow: inset 0 1px rgba(255,255,255,.28), 0 7px 18px rgba(36,73,58,.11); }
+      .chrome { background: conic-gradient(from 30deg, #ea4335 0 33%, #fbbc05 0 66%, #34a853 0 82%, #4285f4 0); }
+      .edge { background: linear-gradient(145deg, #0cc7b4, #168ce0 58%, #2455c2); }
+      .firefox { background: linear-gradient(145deg, #7048ed, #ec4d73 52%, #ff8a29); }
+      .safari { background: linear-gradient(145deg, #56c8ff, #1677df); }
+      .safe360 { background: linear-gradient(145deg, #3fcf68, #159b56); }
+      .fast360 { background: linear-gradient(145deg, #4fc4f2, #4f64d9); }
+      .sogou { background: linear-gradient(145deg, #ff7457, #f34131); }
+      .qq { background: linear-gradient(145deg, #42b6ff, #356bf2); }
+      .mobile { background: linear-gradient(145deg, #44586d, #20303f); }
+
+      .guide-body { border-top: 1px solid #edf1ef; padding: 24px 26px 28px 72px; }
+      .setting-path { display: flex; align-items: center; gap: 10px; margin: 0 0 20px; color: #6a7b74; font-size: 12px; }
+      .setting-path code { overflow: auto; border: 1px solid #deebe5; border-radius: 8px; padding: 6px 9px; color: #216a4e; background: #f3faf7; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; white-space: nowrap; }
+      .mini-copy { border: 0; padding: 4px 2px; color: #2b7e60; background: transparent; font-size: 11px; font-weight: 700; cursor: pointer; }
+      .steps { display: grid; gap: 17px; margin: 0; padding: 0; list-style: none; counter-reset: tutorial-step; }
+      .steps li { position: relative; min-height: 30px; padding: 3px 0 0 43px; color: #4d6159; font-size: 13px; line-height: 1.75; counter-increment: tutorial-step; }
+      .steps li::before { width: 28px; height: 28px; position: absolute; top: 0; left: 0; display: grid; place-items: center; border-radius: 50%; color: #237b59; background: #e8f5ef; font-size: 11px; font-weight: 800; content: counter(tutorial-step); }
+      .steps b { color: #1f352c; font-weight: 700; }
+
+      .mobile-section { margin-top: 35px; }
+      .note { margin-top: 30px; border-radius: 15px; padding: 16px 18px; color: #687b73; background: rgba(223,235,229,.62); font-size: 12px; line-height: 1.7; }
+      footer { margin-top: 42px; color: #93a099; font-size: 11px; text-align: center; }
+      .toast { position: fixed; left: 50%; bottom: 28px; z-index: 10; border-radius: 999px; padding: 11px 17px; color: #fff; background: rgba(20,45,35,.92); box-shadow: 0 12px 34px rgba(9,32,23,.22); font-size: 12px; opacity: 0; pointer-events: none; transform: translate(-50%, 12px); transition: .22s ease; }
+      .toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+      @media (max-width: 640px) {
+        .page { width: min(100% - 24px, 960px); padding-top: 18px; }
+        .hero { margin: 52px auto 27px; }
+        .hero p { font-size: 14px; }
+        .url-card { grid-template-columns: 1fr auto; gap: 7px 10px; margin-bottom: 35px; }
+        .url-card > span { grid-column: 1 / -1; }
+        .url-card input { font-size: 12px; }
+        .section-head { align-items: flex-start; flex-direction: column; gap: 5px; }
+        summary { min-height: 67px; padding: 13px 15px; }
+        .guide-body { padding: 21px 17px 24px; }
+        .setting-path { align-items: flex-start; flex-wrap: wrap; }
+        .setting-path code { max-width: 100%; }
+        .back-link { font-size: 12px; }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        html { scroll-behavior: auto; }
+        *, *::before, *::after { transition-duration: .01ms !important; }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <nav class="topbar" aria-label="页面导航">
+        <a class="brand" href="/"><img src="/mint-logo.png" alt="" />薄荷起始页</a>
+        <a class="back-link" href="/">返回起始页 →</a>
+      </nav>
+
+      <header class="hero">
+        <span class="eyebrow">SET AS HOMEPAGE</span>
+        <h1>如何将薄荷起始页设为主页</h1>
+        <p>浏览器出于安全考虑，不允许网页直接修改主页。找到你正在使用的浏览器，照着下面的步骤操作即可。</p>
+      </header>
+
+      <div class="url-card">
+        <span>薄荷起始页网址</span>
+        <input id="homepage-url" value="https://mintstart.cn/" readonly aria-label="薄荷起始页网址" />
+        <button class="copy-button" type="button" data-copy="https://mintstart.cn/">复制网址</button>
+      </div>
+
+      <section aria-labelledby="desktop-title">
+        <div class="section-head">
+          <h2 id="desktop-title">电脑浏览器</h2>
+          <p>展开对应浏览器查看设置方法</p>
+        </div>
+
+        <div class="browser-list">
+          <details data-browser="chrome">
+            <summary><span class="browser-icon chrome">C</span><strong>Chrome 浏览器</strong><span class="recommended">当前浏览器</span><i class="chevron" aria-hidden="true"></i></summary>
+            <div class="guide-body">
+              <p class="setting-path">设置入口 <code>chrome://settings/onStartup</code><button class="mini-copy" type="button" data-copy="chrome://settings/onStartup">复制入口</button></p>
+              <ol class="steps">
+                <li>复制上面的设置入口，粘贴到 <b>Chrome 地址栏</b>并按回车。</li>
+                <li>在“启动时”中选择 <b>打开特定网页或一组网页</b>，点击“添加新网页”。</li>
+                <li>粘贴 <b>https://mintstart.cn/</b>，点击“添加”。</li>
+              </ol>
+            </div>
+          </details>
+
+          <details data-browser="edge">
+            <summary><span class="browser-icon edge">E</span><strong>Edge 浏览器</strong><span class="recommended">当前浏览器</span><i class="chevron" aria-hidden="true"></i></summary>
+            <div class="guide-body">
+              <p class="setting-path">设置入口 <code>edge://settings/onStartup</code><button class="mini-copy" type="button" data-copy="edge://settings/onStartup">复制入口</button></p>
+              <ol class="steps">
+                <li>复制上面的设置入口，粘贴到 <b>Edge 地址栏</b>并按回车。</li>
+                <li>选择 <b>打开以下页面</b>，再点击“添加新页面”。</li>
+                <li>粘贴 <b>https://mintstart.cn/</b>，点击“添加”。</li>
+              </ol>
+            </div>
+          </details>
+
+          <details data-browser="firefox">
+            <summary><span class="browser-icon firefox">F</span><strong>Firefox 浏览器</strong><span class="recommended">当前浏览器</span><i class="chevron" aria-hidden="true"></i></summary>
+            <div class="guide-body">
+              <p class="setting-path">设置入口 <code>about:preferences#home</code><button class="mini-copy" type="button" data-copy="about:preferences#home">复制入口</button></p>
+              <ol class="steps">
+                <li>复制上面的设置入口，粘贴到 <b>Firefox 地址栏</b>并按回车。</li>
+                <li>在“主页和新窗口”右侧选择 <b>自定义网址</b>。</li>
+                <li>在网址栏粘贴 <b>https://mintstart.cn/</b>。</li>
+              </ol>
+            </div>
+          </details>
+
+          <details data-browser="safari">
+            <summary><span class="browser-icon safari">S</span><strong>Safari 浏览器</strong><span class="recommended">当前浏览器</span><i class="chevron" aria-hidden="true"></i></summary>
+            <div class="guide-body">
+              <ol class="steps">
+                <li>在 Mac 屏幕左上角选择 <b>Safari 浏览器 → 设置</b>。</li>
+                <li>打开 <b>通用</b>，在“主页”一栏粘贴 <b>https://mintstart.cn/</b>。</li>
+                <li>如需启动时显示主页，将“新窗口打开方式”也设为 <b>主页</b>。</li>
+              </ol>
+            </div>
+          </details>
+
+          <details data-browser="360se">
+            <summary><span class="browser-icon safe360">360</span><strong>360 安全浏览器</strong><span class="recommended">当前浏览器</span><i class="chevron" aria-hidden="true"></i></summary>
+            <div class="guide-body">
+              <p class="setting-path">设置入口 <code>se://settings/browser</code><button class="mini-copy" type="button" data-copy="se://settings/browser">复制入口</button></p>
+              <ol class="steps">
+                <li>复制上面的设置入口，粘贴到浏览器地址栏并按回车。</li>
+                <li>找到“启动时打开”，点击 <b>修改主页</b>。</li>
+                <li>输入 <b>https://mintstart.cn/</b> 并确认。</li>
+              </ol>
+            </div>
+          </details>
+
+          <details data-browser="360ee">
+            <summary><span class="browser-icon fast360">360</span><strong>360 极速浏览器</strong><span class="recommended">当前浏览器</span><i class="chevron" aria-hidden="true"></i></summary>
+            <div class="guide-body">
+              <p class="setting-path">设置入口 <code>chrome://settings/browser</code><button class="mini-copy" type="button" data-copy="chrome://settings/browser">复制入口</button></p>
+              <ol class="steps">
+                <li>复制上面的设置入口，粘贴到浏览器地址栏并按回车。</li>
+                <li>在“启动时”中选择 <b>打开主页</b>。</li>
+                <li>在后方输入 <b>https://mintstart.cn/</b>。</li>
+              </ol>
+            </div>
+          </details>
+
+          <details data-browser="sogou">
+            <summary><span class="browser-icon sogou">S</span><strong>搜狗浏览器</strong><span class="recommended">当前浏览器</span><i class="chevron" aria-hidden="true"></i></summary>
+            <div class="guide-body">
+              <p class="setting-path">设置入口 <code>se://settings/?category=general</code><button class="mini-copy" type="button" data-copy="se://settings/?category=general">复制入口</button></p>
+              <ol class="steps">
+                <li>复制上面的设置入口，粘贴到浏览器地址栏并按回车。</li>
+                <li>在“主页”一栏选择 <b>自定义</b>，点击“设置网址”。</li>
+                <li>输入 <b>https://mintstart.cn/</b> 并确认。</li>
+              </ol>
+            </div>
+          </details>
+
+          <details data-browser="qq">
+            <summary><span class="browser-icon qq">QQ</span><strong>QQ 浏览器</strong><span class="recommended">当前浏览器</span><i class="chevron" aria-hidden="true"></i></summary>
+            <div class="guide-body">
+              <p class="setting-path">设置入口 <code>qqbrowser://settings/</code><button class="mini-copy" type="button" data-copy="qqbrowser://settings/">复制入口</button></p>
+              <ol class="steps">
+                <li>复制上面的设置入口，粘贴到浏览器地址栏并按回车。</li>
+                <li>在“启动时打开”中选择 <b>主页</b>，点击右侧“设置”。</li>
+                <li>选择“自定义网站”，输入 <b>https://mintstart.cn/</b> 并确认。</li>
+              </ol>
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <section class="mobile-section" aria-labelledby="mobile-title">
+        <div class="section-head">
+          <h2 id="mobile-title">手机浏览器</h2>
+          <p>手机端可添加到主屏幕，像 App 一样打开</p>
+        </div>
+        <div class="browser-list">
+          <details data-browser="mobile">
+            <summary><span class="browser-icon mobile">M</span><strong>iPhone / Android</strong><span class="recommended">当前设备</span><i class="chevron" aria-hidden="true"></i></summary>
+            <div class="guide-body">
+              <ol class="steps">
+                <li><b>iPhone Safari：</b>点击底部“分享”按钮，再选择“添加到主屏幕”。</li>
+                <li><b>Android Chrome：</b>点击右上角菜单，再选择“添加到主屏幕”或“安装应用”。</li>
+                <li>添加完成后，直接点击桌面上的 <b>薄荷起始页</b> 图标即可。</li>
+              </ol>
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <p class="note">提示：不同浏览器版本的文字可能略有差异。如果找不到对应选项，可在浏览器设置中搜索“启动时”“主页”或“首页”。</p>
+      <footer>MintStart · 薄荷起始页</footer>
+    </main>
+
+    <div class="toast" role="status" aria-live="polite">已复制</div>
+    <script>
+      (() => {
+        const ua = navigator.userAgent.toLowerCase()
+        const isMobile = /android|iphone|ipad|ipod|mobile/.test(ua)
+        let browser = 'chrome'
+
+        if (isMobile) browser = 'mobile'
+        else if (/edg\//.test(ua)) browser = 'edge'
+        else if (/firefox\//.test(ua)) browser = 'firefox'
+        else if (/qqbrowser/.test(ua)) browser = 'qq'
+        else if (/metasr|sogou/.test(ua)) browser = 'sogou'
+        else if (/360se|qihu/.test(ua)) browser = '360se'
+        else if (/360ee/.test(ua)) browser = '360ee'
+        else if (/safari\//.test(ua) && !/chrome|crios|chromium/.test(ua)) browser = 'safari'
+
+        const current = document.querySelector(`[data-browser="${browser}"]`)
+        if (current) {
+          current.classList.add('detected')
+          current.open = true
+        }
+
+        document.querySelectorAll('details').forEach((item) => {
+          item.addEventListener('toggle', () => {
+            if (!item.open) return
+            document.querySelectorAll('details[open]').forEach((other) => {
+              if (other !== item) other.open = false
+            })
+          })
+        })
+
+        const toast = document.querySelector('.toast')
+        let toastTimer
+        const showToast = (message) => {
+          toast.textContent = message
+          toast.classList.add('show')
+          clearTimeout(toastTimer)
+          toastTimer = setTimeout(() => toast.classList.remove('show'), 1800)
+        }
+
+        const copyText = async (value) => {
+          try {
+            await navigator.clipboard.writeText(value)
+          } catch {
+            const field = document.createElement('textarea')
+            field.value = value
+            field.style.cssText = 'position:fixed;opacity:0;pointer-events:none'
+            document.body.appendChild(field)
+            field.select()
+            document.execCommand('copy')
+            field.remove()
+          }
+          showToast(value.includes('mintstart.cn') ? '主页网址已复制' : '设置入口已复制')
+        }
+
+        document.addEventListener('click', (event) => {
+          const button = event.target.closest('[data-copy]')
+          if (button) copyText(button.dataset.copy)
+        })
+
+        document.querySelector('#homepage-url').addEventListener('click', (event) => event.currentTarget.select())
+      })()
+    </script>
+  </body>
+</html>

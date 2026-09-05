@@ -17,6 +17,7 @@ export function OnboardingGuide({
   accountMenuOpen,
   onOpenLaunchpad,
   onCloseLaunchpad,
+  onOpenHomepageGuide,
 }) {
   const [visible, setVisible] = useState(false)
   const [stepIndex, setStepIndex] = useState(0)
@@ -53,10 +54,15 @@ export function OnboardingGuide({
     },
     {
       title: '账户与云端同步',
-      body: '点击右上角的账户入口，查看登录与同步选项。打开菜单后，引导会自动完成。',
+      body: '点击右上角的账户入口，查看登录、同步和更多选项。打开菜单后，引导会自动继续。',
       selector: '.account-area',
       mode: 'account',
       pad: 10,
+    },
+    {
+      title: '设为浏览器主页',
+      body: '最后，你可以把薄荷起始页设为浏览器主页。点击下方按钮，查看与你的浏览器对应的完整设置方法。',
+      mode: 'homepage',
     },
   ], [])
 
@@ -66,6 +72,7 @@ export function OnboardingGuide({
   const needsTargetHole = step?.mode === 'clock' && Boolean(anchor)
   const blocksWholePage = step?.mode === 'welcome'
     || step?.mode === 'launchpad-trigger'
+    || step?.mode === 'homepage'
     || (step?.mode === 'clock' && !anchor)
 
   const finish = useCallback(() => {
@@ -87,13 +94,18 @@ export function OnboardingGuide({
       onOpenLaunchpad?.()
       return
     }
+    if (step.mode === 'homepage') {
+      onOpenHomepageGuide?.()
+      finish()
+      return
+    }
     // 用户可能在抽屉步骤中按 Esc 关掉了抽屉；先恢复现场，不跳到一个没有目标的步骤。
     if ((step.mode === 'launchpad' || step.mode === 'account') && !launchpadOpen) {
       onOpenLaunchpad?.()
       return
     }
     advance()
-  }, [advance, launchpadOpen, onOpenLaunchpad, step])
+  }, [advance, finish, launchpadOpen, onOpenHomepageGuide, onOpenLaunchpad, step])
 
   const goBack = useCallback(() => {
     if (stepIndex === 0) return
@@ -127,9 +139,9 @@ export function OnboardingGuide({
 
   useEffect(() => {
     if (!visible || step?.mode !== 'account' || !accountVisited) return undefined
-    const timer = window.setTimeout(finish, 900)
+    const timer = window.setTimeout(advance, 900)
     return () => window.clearTimeout(timer)
-  }, [accountVisited, finish, step, visible])
+  }, [accountVisited, advance, step, visible])
 
   useEffect(() => {
     if (step?.mode !== 'account') setAccountVisited(false)
@@ -223,6 +235,8 @@ export function OnboardingGuide({
     ? (searchActive ? '搜索框已展开，即将继续…' : '也可以点这里继续')
     : step.mode === 'launchpad-trigger'
       ? '帮我打开'
+      : step.mode === 'homepage'
+        ? '查看设置方法'
       : !launchpadOpen && (step.mode === 'launchpad' || step.mode === 'account')
         ? '重新打开抽屉'
         : isLast ? '完成，开始使用' : '下一步'
@@ -296,7 +310,7 @@ export function OnboardingGuide({
         <h2 id="onboarding-title">{step.title}</h2>
         <p>{step.body}</p>
         <div className="onboarding-actions">
-          <button type="button" className="onboarding-skip" onClick={finish}>跳过</button>
+          <button type="button" className="onboarding-skip" onClick={finish}>{isLast ? '暂时不用' : '跳过'}</button>
           {stepIndex > 0 && <button type="button" className="onboarding-back" onClick={goBack}>上一步</button>}
           <button type="button" className="onboarding-next" onClick={goNext}>{primaryLabel}</button>
         </div>

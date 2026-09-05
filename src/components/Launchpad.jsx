@@ -337,7 +337,7 @@ function AppFormModal({ item, onClose, onSave, onResolve }) {
   )
 }
 
-export function Launchpad({ open, items, user, syncStatus, onClose, onMerge, onReorder, onRenameFolder, onDissolveFolder, onAddApp, onEditApp, onDeleteApp, onLogin, onRegister, onSettings, onAdmin, onLogout, onAccountMenuOpenChange }) {
+export function Launchpad({ open, items, user, syncStatus, onClose, onMerge, onReorder, onRenameFolder, onDissolveFolder, onAddApp, onEditApp, onDeleteApp, onLogin, onRegister, onSettings, onOpenHomepageGuide, onAdmin, onLogout, onAccountMenuOpenChange }) {
   const [folderId, setFolderId] = useState(null)
   const [addOpen, setAddOpen] = useState(false)
   const [editingAppId, setEditingAppId] = useState(null)
@@ -516,6 +516,7 @@ export function Launchpad({ open, items, user, syncStatus, onClose, onMerge, onR
     resetTimer.current = 0
 
     if (!open) {
+      setAccountMenuOpen(false)
       setFolderId(null)
       setAddOpen(false)
       setEditingAppId(null)
@@ -994,9 +995,10 @@ export function Launchpad({ open, items, user, syncStatus, onClose, onMerge, onR
                     <div className="account-menu-caption">{syncStatus || '已登录，配置自动同步'}</div>
                     <button type="button" role="menuitem" onClick={() => { setAccountMenuOpen(false); onSettings() }}>账户设置</button>
                     {user.role === 'admin' && <button type="button" role="menuitem" onClick={() => { setAccountMenuOpen(false); onAdmin() }}>运营后台</button>}
-                    <button className="danger" type="button" role="menuitem" onClick={() => { setAccountMenuOpen(false); onLogout() }}>退出登录</button>
                   </>
                 )}
+                <button type="button" role="menuitem" onClick={() => { setAccountMenuOpen(false); onOpenHomepageGuide() }}>设为主页</button>
+                {user && <button className="danger" type="button" role="menuitem" onClick={() => { setAccountMenuOpen(false); onLogout() }}>退出登录</button>}
               </div>
             )}
           </div>
