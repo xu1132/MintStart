@@ -1,5 +1,7 @@
-import { memo, useEffect, useMemo, useState } from 'react'
+import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import { faviconUrl } from '../data/apps'
+
+const ICON_LOAD_TIMEOUT_MS = 2000
 
 function WebIcon({ app, mini = false }) {
   const sources = useMemo(
@@ -7,9 +9,19 @@ function WebIcon({ app, mini = false }) {
     [app.icon, app.url],
   )
   const [sourceIndex, setSourceIndex] = useState(0)
-  const src = sources[sourceIndex]
+  const [timedOut, setTimedOut] = useState(false)
+  const timeoutRef = useRef(0)
+  const src = timedOut ? undefined : sources[sourceIndex]
 
-  useEffect(() => setSourceIndex(0), [app.icon, app.url])
+  useEffect(() => {
+    setSourceIndex(0)
+    setTimedOut(false)
+    window.clearTimeout(timeoutRef.current)
+    if (sources.length) {
+      timeoutRef.current = window.setTimeout(() => setTimedOut(true), ICON_LOAD_TIMEOUT_MS)
+    }
+    return () => window.clearTimeout(timeoutRef.current)
+  }, [app.icon, app.url, sources.length])
 
   return (
     <span
@@ -17,7 +29,13 @@ function WebIcon({ app, mini = false }) {
       style={{ '--app-color': app.color || '#56677e', '--app-ink': app.darkText ? '#1b2430' : '#fff' }}
     >
       {src ? (
-        <img src={src} alt="" draggable="false" onError={() => setSourceIndex((index) => index + 1)} />
+        <img
+          src={src}
+          alt=""
+          draggable="false"
+          onLoad={() => window.clearTimeout(timeoutRef.current)}
+          onError={() => setSourceIndex((index) => index + 1)}
+        />
       ) : (
         <span className="app-monogram">{app.mono || app.name?.slice(0, 1)}</span>
       )}

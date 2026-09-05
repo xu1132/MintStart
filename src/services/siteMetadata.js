@@ -1,12 +1,13 @@
 import { nameFromUrl, normalizeAppUrl } from '../utils/desktop'
 
 const MICROLINK_API = 'https://api.microlink.io'
+const METADATA_TIMEOUT_MS = 2000
 
 export async function resolveSiteMetadata(rawUrl, { signal } = {}) {
   const url = normalizeAppUrl(rawUrl)
   const fallback = { title: nameFromUrl(url), icon: '' }
   const controller = new AbortController()
-  const timeout = window.setTimeout(() => controller.abort(), 6000)
+  const timeout = window.setTimeout(() => controller.abort(), METADATA_TIMEOUT_MS)
   const forwardAbort = () => controller.abort()
   signal?.addEventListener('abort', forwardAbort, { once: true })
 

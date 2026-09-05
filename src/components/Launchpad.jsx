@@ -271,7 +271,7 @@ function AppFormModal({ item, onClose, onSave, onResolve }) {
     onSave(app)
     onClose()
 
-    // 后台补全网页标题与图标，不阻塞添加流程
+    // 最多等待两秒补全网页信息；超时后保留即时生成的名称字母图标。
     const needName = !name.trim()
     const needIcon = !icon.trim()
     if (!needName && !needIcon) return
@@ -328,7 +328,7 @@ function AppFormModal({ item, onClose, onSave, onResolve }) {
           </div>
 
           <div className="add-app-actions">
-            <span className={`add-app-status${error ? ' error' : ''}`}>{error || '立即添加，名称和图标留空时稍后自动补全'}</span>
+            <span className={`add-app-status${error ? ' error' : ''}`}>{error || '图标最多加载 2 秒，超时后显示名称首字'}</span>
             <button type="submit">{isEditing ? '保存修改' : '添加 App'}</button>
           </div>
         </form>
